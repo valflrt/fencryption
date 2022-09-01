@@ -19,7 +19,6 @@ pub fn action(args: &Args) {
 
     let encrypted_data =
         base64::decode(args.encrypted_data.as_bytes()).expect("Wrongly base64 encoded data");
-    println!("{:x?}", &encrypted_data);
 
     let decrypted = match crypto.decrypt(&encrypted_data) {
         Ok(dec) => dec,
