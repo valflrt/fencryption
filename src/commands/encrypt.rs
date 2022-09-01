@@ -1,7 +1,7 @@
 use base64;
 use clap::Args as ClapArgs;
 
-use fencryption_rust::crypto;
+use fencryption_rust::crypto::Crypto;
 
 #[derive(ClapArgs)]
 pub struct Args {
@@ -15,9 +15,9 @@ pub struct Args {
 }
 
 pub fn action(args: &Args) {
-    let hashed_key = crypto::hash_key(args.key.as_bytes());
+    let crypto = Crypto::new(args.key.as_bytes().to_vec());
 
-    let encrypted = match crypto::encrypt(&hashed_key, args.plain_data.as_bytes()) {
+    let encrypted = match crypto.encrypt(args.plain_data.as_bytes()) {
         Ok(enc) => enc,
         Err(e) => panic!("Failed to encrypt: {}", e),
     };
