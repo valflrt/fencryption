@@ -5,12 +5,15 @@ use crate::commands::Commands;
 mod commands;
 
 #[derive(Parser)]
-#[clap(name = "fencryption", author, version)]
-#[clap(about = "A simple program to encrypt/decrypt files and directories.", long_about = None)]
-#[clap(propagate_version = true)]
+#[clap(name = "fencryption", version)]
+/// A simple program to encrypt/decrypt files and directories
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
+
+    /// Enables debug log
+    #[clap(short = 'D', long, value_parser, default_value_t = false)]
+    debug: bool,
 }
 
 fn main() {
