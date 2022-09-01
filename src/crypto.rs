@@ -1,12 +1,10 @@
-use aes_gcm::{
-    aead::{Aead, OsRng},
-    Aes256Gcm, KeyInit, Nonce,
-};
+use aes_gcm::{aead::OsRng, AeadInPlace, Aes256Gcm, KeyInit, Nonce};
 use anyhow::anyhow;
 use rand::RngCore;
 use ring::digest;
 
-const NONCE_LEN: usize = 12;
+const NONCE_LEN: usize = 96 / 8;
+const TAG_LEN: usize = 128 / 8;
 
 pub struct Crypto {
     hashed_key: Vec<u8>,
@@ -20,38 +18,49 @@ impl Crypto {
     }
 
     pub fn encrypt(&self, plain_data: &[u8]) -> anyhow::Result<Vec<u8>> {
-        let nonce = Nonce::from(Self::generate_nonce());
-
         let cipher = match Aes256Gcm::new_from_slice(&self.hashed_key) {
             Ok(v) => v,
-            Err(e) => return Err(anyhow!("Failed to create cipher: {}", e)),
+            Err(e) => return Err(anyhow!(e)),
         };
 
-        let encrypted_data = match cipher.encrypt(&nonce, plain_data) {
-            Ok(enc) => enc,
-            Err(e) => return Err(anyhow!("Failed to encrypt: {}", e)),
+        let nonce = Nonce::from(Self::generate_nonce());
+        let mut buffer = Vec::with_capacity(plain_data.len() + TAG_LEN);
+        buffer.extend_from_slice(plain_data);
+
+        println!("buffer: {:x?}", &buffer);
+
+        if let Err(e) = cipher.encrypt_in_place(&nonce, &[], &mut buffer) {
+            return Err(anyhow!(e));
         };
 
-        Ok([nonce.to_vec(), encrypted_data].concat())
+        let result = [nonce.to_vec(), buffer].concat();
+
+        println!("nonce: {:x?}", &nonce);
+        println!("result: {:x?}", &result);
+
+        Ok(result)
     }
 
     pub fn decrypt(&self, encrypted_data: &[u8]) -> anyhow::Result<Vec<u8>> {
-        let nonce = Nonce::from_slice(&encrypted_data[..NONCE_LEN]);
-
         let cipher = match Aes256Gcm::new_from_slice(&self.hashed_key) {
             Ok(v) => v,
-            Err(e) => return Err(anyhow!("Failed to create cipher: {}", e)),
+            Err(e) => return Err(anyhow!(e)),
         };
 
-        let decrypted_data = match cipher.decrypt(nonce, &encrypted_data[NONCE_LEN..]) {
-            Ok(dec) => dec,
-            Err(e) => return Err(anyhow!("Failed to decrypt: {}", e)),
+        let nonce = Nonce::from_slice(&encrypted_data[..NONCE_LEN]);
+        let mut buffer = encrypted_data[NONCE_LEN..].to_vec();
+
+        println!("nonce: {:x?}", &nonce);
+        println!("full enc data: {:x?}", &encrypted_data);
+
+        if let Err(e) = cipher.decrypt_in_place(nonce, &[], &mut buffer) {
+            return Err(anyhow!(e));
         };
 
-        Ok(decrypted_data)
+        Ok(buffer)
     }
 
-    pub fn hash_key(key: &[u8]) -> Vec<u8> {
+    fn hash_key(key: &[u8]) -> Vec<u8> {
         digest::digest(&digest::SHA256, key).as_ref().to_owned()
     }
 
