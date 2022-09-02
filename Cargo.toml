@@ -1,5 +1,5 @@
 [package]
-name = "fencryption-rust"
+name = "fencryption"
 authors = ["valflrt"]
 version = "0.1.0"
 edition = "2021"
