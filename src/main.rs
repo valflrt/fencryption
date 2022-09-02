@@ -20,7 +20,6 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Ping(_) => commands::ping::action(),
         Commands::Encrypt(args) => commands::encrypt::action(args),
         Commands::Decrypt(args) => commands::decrypt::action(args),
     }
