@@ -5,7 +5,10 @@ const PLAIN_DATA: &str = "hello :)";
 
 #[test]
 fn encrypt_data_without_error() {
-    let crypto = Crypto::new(KEY.as_bytes().to_vec());
+    let crypto = match Crypto::new(KEY.as_bytes()) {
+        Ok(v) => v,
+        Err(e) => panic!("Failed to create crypto instance: {}", e),
+    };
 
     match crypto.encrypt(PLAIN_DATA.as_bytes()) {
         Ok(_) => (),
@@ -15,7 +18,10 @@ fn encrypt_data_without_error() {
 
 #[test]
 fn decrypt_data_without_error() {
-    let crypto = Crypto::new(KEY.as_bytes().to_vec());
+    let crypto = match Crypto::new(KEY.as_bytes()) {
+        Ok(v) => v,
+        Err(e) => panic!("Failed to create crypto instance: {}", e),
+    };
 
     let encrypted_data = match crypto.encrypt(PLAIN_DATA.as_bytes()) {
         Ok(enc) => enc,
@@ -30,7 +36,10 @@ fn decrypt_data_without_error() {
 
 #[test]
 fn can_encrypt_then_decrypt_and_get_original_data() {
-    let crypto = Crypto::new(KEY.as_bytes().to_vec());
+    let crypto = match Crypto::new(KEY.as_bytes()) {
+        Ok(v) => v,
+        Err(e) => panic!("Failed to create crypto instance: {}", e),
+    };
 
     let encrypted_data = match crypto.encrypt(PLAIN_DATA.as_bytes()) {
         Ok(enc) => enc,

@@ -1,9 +1,9 @@
 use base64;
-use clap::Args as ClapArgs;
+use clap::Args;
 
-use fencryption_rust::crypto::Crypto;
+use fencryption::crypto::Crypto;
 
-#[derive(ClapArgs)]
+#[derive(Args)]
 /// Decrypts base64 encoded text (that has been encrypted) using the passed key
 pub struct Command {
     /// Key used to decrypt
@@ -13,10 +13,23 @@ pub struct Command {
     /// Data to decrypt
     #[clap(value_parser)]
     encrypted_data: String,
+
+    /// Enables debug log
+    #[clap(from_global)]
+    debug: bool,
 }
 
 pub fn action(args: &Command) {
-    let crypto = Crypto::new(args.key.as_bytes().to_vec());
+    let crypto = match Crypto::new(args.key.as_bytes()) {
+        Ok(v) => v,
+        Err(e) => {
+            if args.debug {
+                panic!("Error: Failed to create cipher: {}", e);
+            } else {
+                panic!("Error: Failed to create cipher");
+            }
+        }
+    };
 
     let decoded_enc_data =
         base64::decode(args.encrypted_data.as_bytes()).expect("Wrongly base64 encoded data");
@@ -30,7 +43,7 @@ pub fn action(args: &Command) {
     println!("- byte array result: {:x?}", &dec_data);
     println!("- base 64 encoded result: {}", base64::encode(&dec_data));
     println!(
-        "utf8 encoded result: {}",
+        "- utf8 encoded result: {}",
         match std::str::from_utf8(&dec_data) {
             Ok(v) => v,
             Err(_) => "Invalid utf8 sequence",

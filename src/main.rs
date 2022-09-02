@@ -1,18 +1,22 @@
 use clap::Parser;
 
-use crate::commands::Commands;
-
 mod commands;
 
 #[derive(Parser)]
 #[clap(name = "fencryption", version)]
-/// A simple program to encrypt/decrypt files and directories
+/// A program to encrypt/decrypt files and full directories
 struct Cli {
     #[clap(subcommand)]
-    command: Commands,
+    command: commands::Commands,
 
     /// Enables debug log
-    #[clap(short = 'D', long, value_parser, default_value_t = false)]
+    #[clap(
+        short = 'D',
+        long,
+        value_parser,
+        default_value_t = false,
+        global = true
+    )]
     debug: bool,
 }
 
@@ -20,7 +24,7 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Encrypt(args) => commands::encrypt::action(args),
-        Commands::Decrypt(args) => commands::decrypt::action(args),
+        commands::Commands::Encrypt(args) => commands::encrypt::action(args),
+        commands::Commands::Decrypt(args) => commands::decrypt::action(args),
     }
 }
