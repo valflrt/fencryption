@@ -30,10 +30,6 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macOS-latest
-        rust:
-          - stable
-          - beta
-          - nightly
     runs-on: ${{ matrix.os }}
     needs: [compile]
     steps:
@@ -42,6 +38,6 @@ jobs:
       - name: Setup Rust
         uses: ATiltedTree/setup-rust@v1
         with:
-          rust-version: ${{ matrix.rust }}
+          rust-version: stable
       - name: Test
         run: cargo test
