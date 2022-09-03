@@ -20,16 +20,7 @@ pub struct Command {
 }
 
 pub fn action(args: &Command) {
-    let crypto = match Crypto::new(args.key.as_bytes()) {
-        Ok(v) => v,
-        Err(e) => {
-            if args.debug {
-                panic!("Error: Failed to create cipher: {}", e);
-            } else {
-                panic!("Error: Failed to create cipher");
-            }
-        }
-    };
+    let crypto = Crypto::new(args.key.as_bytes());
 
     let enc_data = match crypto.encrypt(args.plain_data.as_bytes()) {
         Ok(enc) => enc,
