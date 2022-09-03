@@ -5,9 +5,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aes-gcm = "0.10.1"
 anyhow = "1.0.63"
 base64 = "0.13.0"
+chacha20poly1305 = { version = "0.10.1", features = ["stream"] }
 clap = { version = "3.2.17", features = ["derive"] }
 rand = "0.8.5"
 ring = "0.16.20"
