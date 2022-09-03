@@ -28,10 +28,7 @@ impl Crypto {
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
     ///
-    /// let crypto = match Crypto::new(my_super_key) {
-    ///     Ok(v) => v,
-    ///     Err(e) => panic!("Failed to create cipher: {}", e),
-    /// };
+    /// let crypto = Crypto::new(my_super_key);
     ///
     /// let enc_data = match crypto.encrypt(my_super_secret_message) {
     ///     Ok(enc) => enc,
@@ -56,10 +53,7 @@ impl Crypto {
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
     ///
-    /// let crypto = match Crypto::new(my_super_key) {
-    ///     Ok(v) => v,
-    ///     Err(e) => panic!("Failed to create cipher: {}", e),
-    /// };
+    /// let crypto = Crypto::new(my_super_key);
     ///
     /// let enc_data = match crypto.encrypt(&my_super_secret_message) {
     ///     Ok(enc) => enc,
