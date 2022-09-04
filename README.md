@@ -5,5 +5,7 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 ## Todo
 
 - [x] Provide better help about commands
-- [ ] Add default file encryption features
-- [ ] Add io stream enc-/decryption features
+- [x] Add default file encryption features
+- [x] Add io stream enc-/decryption features
+- [ ] Enhance log and error handling
+- [ ] Setup cli
