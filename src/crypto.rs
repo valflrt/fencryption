@@ -1,17 +1,17 @@
-use aead::Nonce;
 use anyhow::anyhow;
 use chacha20poly1305::{
     aead::{stream, Aead},
     KeyInit, XChaCha20Poly1305,
 };
-use rand::{random, rngs::OsRng, RngCore};
+use rand::{rngs::OsRng, RngCore};
 use ring::digest;
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{Read, Write},
 };
 
-const NONCE_LEN: usize = 152 / 8;
+const SMALL_FILE_NONCE_LEN: usize = 192 / 8;
+const LARGE_FILE_NONCE_LEN: usize = 152 / 8;
 
 pub struct Crypto {
     cipher: XChaCha20Poly1305,
@@ -44,7 +44,7 @@ impl Crypto {
     /// };
     /// ```
     pub fn encrypt(&self, plain_data: &[u8]) -> Result<Vec<u8>, chacha20poly1305::aead::Error> {
-        let nonce = random_nonce();
+        let nonce = small_file_random_nonce();
 
         match self.cipher.encrypt(nonce[..].into(), plain_data) {
             Ok(v) => Ok([nonce.to_vec(), v].concat()),
@@ -74,8 +74,8 @@ impl Crypto {
     /// };
     /// ```
     pub fn decrypt(&self, encrypted_data: &[u8]) -> Result<Vec<u8>, chacha20poly1305::aead::Error> {
-        let nonce = &encrypted_data[..NONCE_LEN];
-        let ciphertext = &encrypted_data[NONCE_LEN..];
+        let nonce = &encrypted_data[..SMALL_FILE_NONCE_LEN];
+        let ciphertext = &encrypted_data[SMALL_FILE_NONCE_LEN..];
 
         match self.cipher.decrypt(nonce.into(), ciphertext) {
             Ok(v) => Ok(v),
@@ -84,7 +84,9 @@ impl Crypto {
     }
 
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
-        let nonce = random_nonce();
+        let nonce = large_file_random_nonce();
+
+        println!("nonce: {:x?}", &nonce);
 
         let mut stream_cipher =
             stream::EncryptorBE32::from_aead(self.cipher.to_owned(), nonce[..].into());
@@ -92,28 +94,64 @@ impl Crypto {
         const BUFFER_LEN: usize = 500;
         let mut buffer = [0u8; BUFFER_LEN];
 
+        let mut first = true;
+
         loop {
-            let read_len = match source.read(&mut buffer) {
-                Ok(v) => v,
-                Err(e) => return Err(anyhow!(e)),
-            };
+            let read_len = source.read(&mut buffer)?;
 
             if read_len == BUFFER_LEN {
                 let ciphertext = stream_cipher
-                    .encrypt_next(buffer.as_slice())
+                    .encrypt_next(&buffer[..])
                     .map_err(|e| anyhow!(e))?;
-                match dest.write(&ciphertext) {
-                    Ok(v) => v,
-                    Err(e) => return Err(anyhow!(e)),
+                match first {
+                    true => dest.write(&[&nonce[..], &ciphertext].concat())?,
+                    false => dest.write(&ciphertext)?,
                 };
             } else {
                 let ciphertext = stream_cipher
                     .encrypt_last(&buffer[..read_len])
                     .map_err(|e| anyhow!(e))?;
-                match dest.write(&ciphertext) {
-                    Ok(v) => v,
-                    Err(e) => return Err(anyhow!(e)),
+                match first {
+                    true => dest.write(&[&nonce[..], &ciphertext].concat())?,
+                    false => dest.write(&ciphertext)?,
                 };
+                break;
+            }
+            if first == true {
+                first = !first;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
+        let mut nonce = [0u8; LARGE_FILE_NONCE_LEN];
+        source.read_exact(&mut nonce)?;
+
+        println!("{:x?}", &nonce);
+
+        let mut stream_cipher =
+            stream::DecryptorBE32::from_aead(self.cipher.to_owned(), &nonce.into());
+
+        const BUFFER_LEN: usize = 500 + 16; // 500 encrypted data and 16 auth tag
+        let mut buffer = [0u8; BUFFER_LEN];
+
+        loop {
+            let read_len = source.read(&mut buffer)?;
+
+            if read_len == BUFFER_LEN {
+                let plaintext = stream_cipher
+                    .decrypt_next(&buffer[..])
+                    .map_err(|e| anyhow!(e))?;
+                dest.write(&plaintext)?;
+            } else if read_len == 0 {
+                break;
+            } else {
+                let plaintext = stream_cipher
+                    .decrypt_last(&buffer[..read_len])
+                    .map_err(|e| anyhow!(e))?;
+                dest.write(&plaintext)?;
                 break;
             }
         }
@@ -126,8 +164,14 @@ fn hash_key(key: &[u8]) -> Vec<u8> {
     digest::digest(&digest::SHA256, key).as_ref().to_owned()
 }
 
-fn random_nonce() -> Vec<u8> {
-    let mut nonce = [0; NONCE_LEN];
+fn small_file_random_nonce() -> Vec<u8> {
+    let mut nonce = [0; SMALL_FILE_NONCE_LEN];
+    OsRng.fill_bytes(&mut nonce);
+    nonce.to_vec()
+}
+
+fn large_file_random_nonce() -> Vec<u8> {
+    let mut nonce = [0; LARGE_FILE_NONCE_LEN];
     OsRng.fill_bytes(&mut nonce);
     nonce.to_vec()
 }
