@@ -21,6 +21,8 @@
 
 A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (because typescript sucks a lil' bit for this kind of project...).
 
+**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.**
+
 ## Todo
 
 - [x] Provide better help about commands
