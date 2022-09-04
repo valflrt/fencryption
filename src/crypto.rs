@@ -1,9 +1,17 @@
-use chacha20poly1305::{aead::Aead, KeyInit, XChaCha20Poly1305};
-use rand::{rngs::OsRng, RngCore};
+use aead::Nonce;
+use anyhow::anyhow;
+use chacha20poly1305::{
+    aead::{stream, Aead},
+    KeyInit, XChaCha20Poly1305,
+};
+use rand::{random, rngs::OsRng, RngCore};
 use ring::digest;
+use std::{
+    fs::{self, File},
+    io::{Read, Write},
+};
 
-const NONCE_LEN: usize = 24;
-// const TAG_LEN: usize = 128 / 8;
+const NONCE_LEN: usize = 152 / 8;
 
 pub struct Crypto {
     cipher: XChaCha20Poly1305,
@@ -73,6 +81,44 @@ impl Crypto {
             Ok(v) => Ok(v),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
+        let nonce = random_nonce();
+
+        let mut stream_cipher =
+            stream::EncryptorBE32::from_aead(self.cipher.to_owned(), nonce[..].into());
+
+        const BUFFER_LEN: usize = 500;
+        let mut buffer = [0u8; BUFFER_LEN];
+
+        loop {
+            let read_len = match source.read(&mut buffer) {
+                Ok(v) => v,
+                Err(e) => return Err(anyhow!(e)),
+            };
+
+            if read_len == BUFFER_LEN {
+                let ciphertext = stream_cipher
+                    .encrypt_next(buffer.as_slice())
+                    .map_err(|e| anyhow!(e))?;
+                match dest.write(&ciphertext) {
+                    Ok(v) => v,
+                    Err(e) => return Err(anyhow!(e)),
+                };
+            } else {
+                let ciphertext = stream_cipher
+                    .encrypt_last(&buffer[..read_len])
+                    .map_err(|e| anyhow!(e))?;
+                match dest.write(&ciphertext) {
+                    Ok(v) => v,
+                    Err(e) => return Err(anyhow!(e)),
+                };
+                break;
+            }
+        }
+
+        Ok(())
     }
 }
 
