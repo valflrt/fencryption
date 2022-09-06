@@ -1,7 +1,7 @@
 use base64;
 use clap::Args;
 
-use fencryption::crypto::Crypto;
+use crate::crypto::Crypto;
 
 #[derive(Args)]
 /// Encrypts text using the passed key
@@ -14,7 +14,6 @@ pub struct Command {
     #[clap(value_parser)]
     plain_data: String,
 
-    /// Enables debug log
     #[clap(from_global)]
     debug: bool,
 }
