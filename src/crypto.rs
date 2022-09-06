@@ -83,6 +83,7 @@ impl Crypto {
         }
     }
 
+    /// Encrypt a stream from a source io::File and a destination io::File.
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
         let nonce = large_file_random_nonce();
 
@@ -125,6 +126,7 @@ impl Crypto {
         Ok(())
     }
 
+    /// Decrypt a stream from a source io::File and a destination io::File.
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
         let mut nonce = [0u8; LARGE_FILE_NONCE_LEN];
         source.read_exact(&mut nonce)?;
