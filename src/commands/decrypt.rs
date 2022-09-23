@@ -1,18 +1,23 @@
-use base64;
+use std::fs::File;
+
 use clap::Args;
 
 use crate::crypto::Crypto;
 
 #[derive(Args)]
-/// Decrypts base64 encoded text (that has been encrypted) using the passed key
+/// Encrypts text using the passed key
 pub struct Command {
     /// Key used to decrypt
     #[clap(value_parser)]
     key: String,
 
-    /// Data to decrypt
+    /// Path of the file to decrypt
     #[clap(value_parser)]
-    encrypted_data: String,
+    path: String,
+
+    /// Output path where to write the decrypted data
+    #[clap(short, long, value_parser)]
+    output_path: Option<String>,
 
     #[clap(from_global)]
     debug: bool,
@@ -21,22 +26,17 @@ pub struct Command {
 pub fn action(args: &Command) {
     let crypto = Crypto::new(args.key.as_bytes());
 
-    let decoded_enc_data =
-        base64::decode(args.encrypted_data.as_bytes()).expect("Wrongly base64 encoded data");
-
-    let dec_data = match crypto.decrypt(&decoded_enc_data) {
-        Ok(dec) => dec,
-        Err(e) => panic!("Failed to decrypt: {}", e),
+    let output_path;
+    match &args.output_path {
+        Some(v) => output_path = v.to_string(),
+        None => output_path = [&args.path, ".dec"].join(""),
     };
 
-    println!("\nDecryption result:\n");
-    println!("- byte array result: {:x?}", &dec_data);
-    println!("- base 64 encoded result: {}", base64::encode(&dec_data));
-    println!(
-        "- utf8 encoded result: {}",
-        match std::str::from_utf8(&dec_data) {
-            Ok(v) => v,
-            Err(_) => "Invalid utf8 sequence",
-        }
-    );
+    let mut source = File::open(&args.path).expect("Failed to read source file");
+    let mut dest = File::create(&output_path).expect("Failed to create destination file");
+
+    match crypto.decrypt_stream(&mut source, &mut dest) {
+        Ok(_) => println!("Success"),
+        Err(e) => panic!("Failed to encrypt: {}", e),
+    };
 }

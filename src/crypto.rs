@@ -10,6 +10,7 @@ use std::{
     io::{Read, Write},
 };
 
+#[allow(dead_code)]
 const SMALL_FILE_NONCE_LEN: usize = 192 / 8;
 const LARGE_FILE_NONCE_LEN: usize = 152 / 8;
 
@@ -43,6 +44,7 @@ impl Crypto {
     ///     Err(e) => panic!("Failed to encrypt: {}", e),
     /// };
     /// ```
+    #[allow(dead_code)]
     pub fn encrypt(&self, plain_data: &[u8]) -> Result<Vec<u8>, chacha20poly1305::aead::Error> {
         let nonce = small_file_random_nonce();
 
@@ -73,6 +75,7 @@ impl Crypto {
     ///     Err(e) => panic!("Failed to decrypt: {}", e),
     /// };
     /// ```
+    #[allow(dead_code)]
     pub fn decrypt(&self, encrypted_data: &[u8]) -> Result<Vec<u8>, chacha20poly1305::aead::Error> {
         let nonce = &encrypted_data[..SMALL_FILE_NONCE_LEN];
         let ciphertext = &encrypted_data[SMALL_FILE_NONCE_LEN..];
@@ -86,8 +89,6 @@ impl Crypto {
     /// Encrypt a stream from a source io::File and a destination io::File.
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
         let nonce = large_file_random_nonce();
-
-        println!("nonce: {:x?}", &nonce);
 
         let mut stream_cipher =
             stream::EncryptorBE32::from_aead(self.cipher.to_owned(), nonce[..].into());
@@ -130,8 +131,6 @@ impl Crypto {
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
         let mut nonce = [0u8; LARGE_FILE_NONCE_LEN];
         source.read_exact(&mut nonce)?;
-
-        println!("{:x?}", &nonce);
 
         let mut stream_cipher =
             stream::DecryptorBE32::from_aead(self.cipher.to_owned(), &nonce.into());
