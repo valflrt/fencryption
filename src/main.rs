@@ -1,7 +1,7 @@
 mod cli;
 mod commands;
 mod crypto;
-mod tree;
+mod walk_dir;
 
 fn main() {
     cli::parse();
