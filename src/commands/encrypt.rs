@@ -1,4 +1,5 @@
-use base64;
+use std::fs::File;
+
 use clap::Args;
 
 use crate::crypto::Crypto;
@@ -10,9 +11,13 @@ pub struct Command {
     #[clap(value_parser)]
     key: String,
 
-    /// Data to encrypt
+    /// Path of the file to encrypt
     #[clap(value_parser)]
-    plain_data: String,
+    path: String,
+
+    /// Output path where to write the encrypted data
+    #[clap(short, long, value_parser)]
+    output_path: Option<String>,
 
     #[clap(from_global)]
     debug: bool,
@@ -21,12 +26,17 @@ pub struct Command {
 pub fn action(args: &Command) {
     let crypto = Crypto::new(args.key.as_bytes());
 
-    let enc_data = match crypto.encrypt(args.plain_data.as_bytes()) {
-        Ok(enc) => enc,
-        Err(e) => panic!("Failed to encrypt: {}", e),
+    let output_path;
+    match &args.output_path {
+        Some(v) => output_path = v.to_string(),
+        None => output_path = [&args.path, ".enc"].join(""),
     };
 
-    println!("\nEncryption result:\n");
-    println!("- byte array result: {:x?}", &enc_data);
-    println!("- base 64 encoded result: {}", base64::encode(&enc_data));
+    let mut source = File::open(&args.path).expect("Failed to read source file");
+    let mut dest = File::create(&output_path).expect("Failed to create destination file");
+
+    match crypto.encrypt_stream(&mut source, &mut dest) {
+        Ok(_) => println!("Success"),
+        Err(e) => panic!("Failed to encrypt: {}", e),
+    };
 }
