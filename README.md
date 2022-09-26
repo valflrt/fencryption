@@ -28,6 +28,6 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 - [x] Provide better help about commands
 - [x] Add default file encryption features
 - [x] Add io stream enc-/decryption features
-- [ ] Setup directory recursive mapping
+- [x] Setup directory recursive mapping
 - [ ] Enhance log and error handling
 - [ ] Setup cli
