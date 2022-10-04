@@ -12,8 +12,8 @@ pub struct Dir {
 }
 
 impl Dir {
-    pub fn new(path: PathBuf) -> Result<Dir> {
-        let read_dir = match fs::read_dir(&path) {
+    pub fn new(path: &PathBuf) -> Result<Dir> {
+        let read_dir = match fs::read_dir(path) {
             Ok(v) => v,
             Err(e) => return Err(WalkDirErrorKind::IOError(e)),
         };

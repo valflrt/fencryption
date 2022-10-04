@@ -18,7 +18,7 @@ pub struct WalkDir {
 }
 
 impl WalkDir {
-    pub fn new(path: PathBuf) -> Result<WalkDir> {
+    pub fn new(path: &PathBuf) -> Result<WalkDir> {
         Ok(WalkDir {
             dir_chain: DirArray::new(match Dir::new(path) {
                 Ok(v) => v,
@@ -37,7 +37,7 @@ impl Iterator for WalkDir {
                 Some(Ok(entry)) => match entry.file_type() {
                     Ok(file_type) => {
                         if file_type.is_dir() {
-                            self.dir_chain.push(match Dir::new(entry.path()) {
+                            self.dir_chain.push(match Dir::new(&entry.path()) {
                                 Ok(v) => v,
                                 Err(e) => return Some(Err(e)),
                             });
