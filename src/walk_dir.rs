@@ -41,10 +41,8 @@ impl Iterator for WalkDir {
                                 Ok(v) => v,
                                 Err(e) => return Some(Err(e)),
                             });
-                            return self.next();
-                        } else {
-                            return Some(Ok(entry));
                         }
+                        return Some(Ok(entry));
                     }
                     Err(e) => return Some(Err(WalkDirErrorKind::IOError(e))),
                 },
