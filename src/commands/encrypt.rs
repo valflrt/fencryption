@@ -7,7 +7,7 @@ use std::{
 
 use clap::Args;
 
-use crate::{crypto::Crypto, walk_dir::WalkDir};
+use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 
 #[derive(Args)]
 /// Encrypts text using the passed key
@@ -29,6 +29,8 @@ pub struct Command {
 }
 
 pub fn action(args: &Command) {
+    let timer = time::SystemTime::now();
+
     let crypto = Crypto::new(args.key.as_bytes());
 
     let input_dir_path = PathBuf::from(&args.path);
@@ -40,8 +42,6 @@ pub fn action(args: &Command) {
             path
         }
     };
-
-    let start_timestamp = time::SystemTime::now();
 
     match fs::create_dir(&output_dir_path) {
         Ok(_) => println!("created base directory: \"{}\"", &output_dir_path.display()),
@@ -68,33 +68,30 @@ pub fn action(args: &Command) {
 
         if entry_type.is_dir() {
             match fs::create_dir(&new_entry_path) {
-                Ok(_) => println!("created sub-directory: \"{}\"", &new_entry_path.display()),
+                Ok(_) => println!("Created sub-directory: \"{}\"", &new_entry_path.display()),
                 Err(e) => match e.kind() {
                     io::ErrorKind::AlreadyExists => (),
                     e => panic!("Failed to create directory: {}", e),
                 },
             }
         } else if entry_type.is_file() {
+            print!("{} ... ", &entry_path.display());
+
             let mut source = File::open(&entry_path).expect("Failed to read source file");
             let mut dest =
                 File::create(&new_entry_path).expect("Failed to create destination file");
 
             match crypto.encrypt_stream(&mut source, &mut dest) {
-                Ok(_) => println!("encrypted \"{}\"", &entry_path.display()),
+                Ok(_) => println!("Ok"),
                 Err(e) => panic!("Failed to encrypt: {}", e),
             };
         } else {
-            println!("Failed to encrypt entry: Unknown type");
+            println!("Skipped entry: Unknown type");
         }
     }
 
-    let end_timestamp = time::SystemTime::now();
-
     println!(
-        "Done (in {}ms)",
-        end_timestamp
-            .duration_since(start_timestamp)
-            .unwrap_or_default()
-            .as_millis()
+        "Done: All Ok ({}ms elapsed)",
+        timer.elapsed().unwrap_or_default().as_millis()
     )
 }
