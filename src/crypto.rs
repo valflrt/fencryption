@@ -87,6 +87,25 @@ impl Crypto {
     }
 
     /// Encrypt a stream from a source io::File and a destination io::File.
+    ///
+    /// Example:
+    /// ```rust
+    /// use std::{env, fs::File, io::Write};
+    ///
+    /// use fencryption::crypto::Crypto;
+    ///
+    /// let my_super_key = "this_is_super_secure".as_bytes();
+    /// let my_super_secret_message = "hello :)".as_bytes();
+    ///
+    /// let crypto = Crypto::new(my_super_key);
+    ///
+    /// File::create(&env::temp_dir().join("encrypt_stream_test")).expect("Failed to create source file").write_all(b"test");
+    /// let mut source = File::open(&env::temp_dir().join("encrypt_stream_test")).expect("Failed to open destination file");
+    /// let mut dest =
+    ///     File::create(&env::temp_dir().join("encrypt_stream_test")).expect("Failed to create destination file");
+    ///
+    /// crypto.encrypt_stream(&mut source, &mut dest).expect("Failed to encrypt file");
+    /// ```
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
         let nonce = large_file_random_nonce();
 
@@ -128,6 +147,31 @@ impl Crypto {
     }
 
     /// Decrypt a stream from a source io::File and a destination io::File.
+    ///
+    /// Example:
+    /// ```rust
+    /// use std::{env, fs::File, io::Write};
+    ///
+    /// use fencryption::crypto::Crypto;
+    ///
+    /// let my_super_key = "this_is_super_secure".as_bytes();
+    /// let my_super_secret_message = "hello :)".as_bytes();
+    ///
+    /// let crypto = Crypto::new(my_super_key);
+    ///
+    /// File::create(&env::temp_dir().join("encrypt_stream_test")).expect("Failed to create source file").write_all(b"test");
+    /// let mut source = File::open(&env::temp_dir().join("encrypt_stream_test")).expect("Failed to open destination file");
+    /// let mut dest =
+    ///     File::create(&env::temp_dir().join("encrypt_stream_test.enc")).expect("Failed to create destination file");
+    ///
+    /// crypto.encrypt_stream(&mut source, &mut dest).expect("Failed to encrypt file");
+    ///
+    /// let mut source = File::open(&env::temp_dir().join("encrypt_stream_test.enc")).expect("Failed to open destination file");
+    /// let mut dest =
+    ///     File::create(&env::temp_dir().join("encrypt_stream_test.dec")).expect("Failed to create destination file");
+    ///
+    /// crypto.decrypt_stream(&mut source, &mut dest).expect("Failed to decrypt file");
+    /// ```
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> anyhow::Result<()> {
         let mut nonce = [0u8; LARGE_FILE_NONCE_LEN];
         source.read_exact(&mut nonce)?;
