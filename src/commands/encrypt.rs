@@ -1,4 +1,9 @@
-use std::{fs::File, path::PathBuf};
+use std::{
+    fs::{self, File},
+    io,
+    path::PathBuf,
+    time,
+};
 
 use clap::Args;
 
@@ -27,35 +32,69 @@ pub fn action(args: &Command) {
     let crypto = Crypto::new(args.key.as_bytes());
 
     let input_dir_path = PathBuf::from(&args.path);
-
     let output_dir_path = match &args.output_path {
         Some(v) => PathBuf::from(v),
-        None => PathBuf::from(&args.path).join(".enc"),
+        None => {
+            let mut path = PathBuf::from(&args.path);
+            path.set_extension("enc");
+            path
+        }
     };
+
+    let start_timestamp = time::SystemTime::now();
+
+    match fs::create_dir(&output_dir_path) {
+        Ok(_) => println!("created base directory: \"{}\"", &output_dir_path.display()),
+        Err(e) => match e.kind() {
+            io::ErrorKind::AlreadyExists => (),
+            e => panic!("Failed to create directory: {}", e),
+        },
+    }
 
     let walk_dir = WalkDir::new(&input_dir_path).expect("Error: Failed to read directory.");
 
     for entry in walk_dir {
-        match entry {
-            Ok(entry) => {
-                let entry_path = entry.path();
-                let relative_entry_path = match entry_path.strip_prefix(&args.path) {
-                    Ok(v) => output_dir_path.join(v),
-                    Err(e) => panic!("Failed to establish relative file path, {}", e),
-                };
+        let entry = entry.expect("Failed to read entry");
 
-                println!("{}", &relative_entry_path.display());
+        let entry_path = entry.path();
 
-                let mut source = File::open(&args.path).expect("Failed to read source file");
-                let mut dest =
-                    File::create(relative_entry_path).expect("Failed to create destination file");
+        let new_entry_path = output_dir_path.join(
+            entry_path
+                .strip_prefix(&input_dir_path)
+                .expect("Failed to establish relative file path"),
+        );
 
-                match crypto.encrypt_stream(&mut source, &mut dest) {
-                    Ok(_) => println!("Success"),
-                    Err(e) => panic!("Failed to encrypt: {}", e),
-                };
+        let entry_type = entry.file_type().expect("Failed to read file type");
+
+        if entry_type.is_dir() {
+            match fs::create_dir(&new_entry_path) {
+                Ok(_) => println!("created sub-directory: \"{}\"", &new_entry_path.display()),
+                Err(e) => match e.kind() {
+                    io::ErrorKind::AlreadyExists => (),
+                    e => panic!("Failed to create directory: {}", e),
+                },
             }
-            Err(e) => panic!("{:#?}", e),
+        } else if entry_type.is_file() {
+            let mut source = File::open(&entry_path).expect("Failed to read source file");
+            let mut dest =
+                File::create(&new_entry_path).expect("Failed to create destination file");
+
+            match crypto.encrypt_stream(&mut source, &mut dest) {
+                Ok(_) => println!("encrypted \"{}\"", &entry_path.display()),
+                Err(e) => panic!("Failed to encrypt: {}", e),
+            };
+        } else {
+            println!("Failed to encrypt entry: Unknown type");
         }
     }
+
+    let end_timestamp = time::SystemTime::now();
+
+    println!(
+        "Done (in {}ms)",
+        end_timestamp
+            .duration_since(start_timestamp)
+            .unwrap_or_default()
+            .as_millis()
+    )
 }
