@@ -4,7 +4,7 @@ pub mod decrypt;
 pub mod encrypt;
 
 #[derive(Subcommand)]
-pub enum Commands {
+pub enum CommandEnum {
     Encrypt(encrypt::Command),
     Decrypt(decrypt::Command),
 }

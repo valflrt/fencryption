@@ -7,9 +7,9 @@ use crate::commands;
 /// A program to encrypt/decrypt files and full directories
 struct Cli {
     #[clap(subcommand)]
-    command: commands::Commands,
+    command: commands::CommandEnum,
 
-    /// Enables debug log
+    /// Enable debug log
     #[clap(
         short = 'D',
         long,
@@ -22,7 +22,7 @@ struct Cli {
 
 pub fn parse() {
     match &Cli::parse().command {
-        commands::Commands::Encrypt(args) => commands::encrypt::action(args),
-        commands::Commands::Decrypt(args) => commands::decrypt::action(args),
+        commands::CommandEnum::Encrypt(args) => commands::encrypt::action(args),
+        commands::CommandEnum::Decrypt(args) => commands::decrypt::action(args),
     }
 }
