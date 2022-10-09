@@ -10,17 +10,18 @@ use clap::Args;
 use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 
 #[derive(Args)]
-/// Encrypts text using the passed key
+/// Decrypt specified encrypted file/directory using the passed
+/// key
 pub struct Command {
     /// Key used to decrypt
     #[clap(value_parser)]
     key: String,
 
-    /// Path of the file to decrypt
+    /// Path of the encrypted file/directory to decrypt
     #[clap(value_parser)]
     path: String,
 
-    /// Output path where to write the decrypted data
+    /// Set output path
     #[clap(short, long, value_parser)]
     output_path: Option<String>,
 
