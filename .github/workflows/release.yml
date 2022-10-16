@@ -49,6 +49,10 @@ jobs:
           - "target/release/fencryption"
           - "target/release/fencryption.exe"
           - "target/release/fencryption"
+        bin_name:
+          - "fencryption-ubuntu"
+          - "fencryption-windows.exe"
+          - "fencryption-macOS"
     runs-on: ${{ matrix.os }}
     needs: [test]
     steps:
@@ -60,9 +64,11 @@ jobs:
           rust-version: stable
       - name: Build
         run: cargo build -r
+      - name: Rename binaries
+        run: cp ${{ matrix.bin_path }} bin/${{ matrix.bin_path }}
       - name: Upload binaries
         uses: alexellis/upload-assets@0.3.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          asset_paths: ${{ matrix.bin_path }}
+          asset_paths: bin/${{ matrix.bin_path }}
