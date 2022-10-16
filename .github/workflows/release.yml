@@ -10,6 +10,7 @@ jobs:
     uses: ./.github/workflows/tests.yml
   release:
     name: Release
+    needs: test
     strategy:
       matrix:
         os:
