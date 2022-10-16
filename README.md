@@ -31,3 +31,11 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 - [x] Setup directory recursive mapping
 - [ ] Enhance log and error handling
 - [ ] Enhance cli
+
+### Possible todo _(things that could be added in the future)_
+
+> Those are just some ideas, they are not concrete yet
+
+- [ ] Encrypting would make a .bin file with all the encrypted files packed inside
+  - [ ] Command "open" would create a directory where decrypted files appear
+  - [ ] Command "close" would update the .bin file with the changes made in the directory
