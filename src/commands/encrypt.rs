@@ -35,7 +35,7 @@ pub fn action(args: &Command) {
     let crypto = Crypto::new(args.key.as_bytes());
 
     if args.output_path.is_some() && args.paths.len() != 1 {
-        println!("Error: Only one input path can be provided when setting an output path");
+        println!("\nError: Only one input path can be provided when setting an output path");
         process::exit(1);
     }
 
@@ -62,7 +62,7 @@ pub fn action(args: &Command) {
                 match e.kind() {
                     io::ErrorKind::AlreadyExists => (),
                     _ => {
-                        println!("Error: Failed to create base directory");
+                        println!("\nError: Failed to create base directory");
                         if args.debug == true {
                             println!("  {}", e)
                         }
@@ -89,7 +89,7 @@ pub fn action(args: &Command) {
                         match e.kind() {
                             io::ErrorKind::AlreadyExists => (),
                             e => {
-                                println!("Error: Failed to create sub-directory");
+                                println!("\nError: Failed to create sub-directory");
                                 if args.debug == true {
                                     println!("  {}", e)
                                 }
@@ -106,7 +106,7 @@ pub fn action(args: &Command) {
                         .open(&entry_path)
                         .unwrap_or_else(|e| {
                             println!("ERROR");
-                            println!("Error: Failed to read source file");
+                            println!("\nError: Failed to read source file");
                             if args.debug == true {
                                 println!("  {}", e)
                             }
@@ -119,7 +119,7 @@ pub fn action(args: &Command) {
                         .open(&new_entry_path)
                         .unwrap_or_else(|e| {
                             println!("ERROR");
-                            println!("Error: Failed to read/create destination file");
+                            println!("\nError: Failed to read/create destination file");
                             if args.debug == true {
                                 println!("  {}", e)
                             }
@@ -130,7 +130,7 @@ pub fn action(args: &Command) {
                         Ok(_) => println!("Ok"),
                         Err(e) => {
                             println!("ERROR");
-                            println!("Error: Failed to encrypt");
+                            println!("\nError: Failed to encrypt");
                             if args.debug == true {
                                 println!("  {}", e)
                             }
@@ -152,7 +152,7 @@ pub fn action(args: &Command) {
                 .open(&input_path)
                 .unwrap_or_else(|e| {
                     println!("ERROR");
-                    println!("Error: Failed to read source file");
+                    println!("\nError: Failed to read source file");
                     if args.debug == true {
                         println!("  {}", e)
                     }
@@ -165,7 +165,7 @@ pub fn action(args: &Command) {
                 .open(&output_path)
                 .unwrap_or_else(|e| {
                     println!("ERROR");
-                    println!("Error: Failed to read/create destination file");
+                    println!("\nError: Failed to read/create destination file");
                     if args.debug == true {
                         println!("  {}", e)
                     }
@@ -176,7 +176,7 @@ pub fn action(args: &Command) {
                 Ok(_) => println!("Ok"),
                 Err(e) => {
                     println!("ERROR");
-                    println!("Error: Failed to encrypt");
+                    println!("\nError: Failed to encrypt");
                     if args.debug == true {
                         println!("  {}", e)
                     }
