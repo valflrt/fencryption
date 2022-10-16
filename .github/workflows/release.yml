@@ -14,32 +14,14 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
+          - macos-latest
           - windows-latest
-          - macOS-latest
-        bin_path:
-          - "target/release/fencryption"
-          - "target/release/fencryption.exe"
-          - "target/release/fencryption"
-        bin_name:
-          - "fencryption-ubuntu"
-          - "fencryption-windows.exe"
-          - "fencryption-macOS"
     runs-on: ${{ matrix.os }}
-    needs: [test]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Setup Rust
-        uses: ATiltedTree/setup-rust@v1
+      - uses: actions/checkout@v3
+      - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          rust-version: stable
-      - name: Build
-        run: cargo build -r
-      - name: Rename binaries
-        run: cp ${{ matrix.bin_path }} bin/${{ matrix.bin_path }}
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.3.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: bin/${{ matrix.bin_path }}
+          bin: fencryption
+          tar: unix
+          zip: windows
+          token: ${{ secrets.GITHUB_TOKEN }}
