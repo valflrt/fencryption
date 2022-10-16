@@ -2,7 +2,7 @@ use std::{
     fs::{self, OpenOptions},
     io,
     path::PathBuf,
-    time,
+    process, time,
 };
 
 use clap::Args;
@@ -34,17 +34,16 @@ pub fn action(args: &Command) {
 
     let crypto = Crypto::new(args.key.as_bytes());
 
+    if args.output_path.is_some() && args.paths.len() != 1 {
+        println!("Error: Only one input path can be provided when setting an output path");
+        process::exit(1);
+    }
+
     // Runs for every provided input path
     for input_path in &args.paths {
         let input_path = PathBuf::from(input_path);
         let output_path = match &args.output_path {
-            Some(v) => {
-                if &args.paths.len() == &1usize {
-                    PathBuf::from(v)
-                } else {
-                    panic!("Only one input path can be provided when setting an output path");
-                }
-            }
+            Some(v) => PathBuf::from(v),
             None => {
                 let mut path = PathBuf::from(&input_path);
                 path.set_extension("enc");
@@ -62,7 +61,13 @@ pub fn action(args: &Command) {
             if let Err(e) = fs::create_dir(&output_path) {
                 match e.kind() {
                     io::ErrorKind::AlreadyExists => (),
-                    e => panic!("Failed to create directory: {}", e),
+                    _ => {
+                        println!("Error: Failed to create base directory");
+                        if args.debug == true {
+                            println!("  {}", e)
+                        }
+                        process::exit(1);
+                    }
                 };
             };
 
@@ -83,30 +88,57 @@ pub fn action(args: &Command) {
                     if let Err(e) = fs::create_dir(&new_entry_path) {
                         match e.kind() {
                             io::ErrorKind::AlreadyExists => (),
-                            e => panic!("Failed to create directory: {}", e),
+                            e => {
+                                println!("Error: Failed to create sub-directory");
+                                if args.debug == true {
+                                    println!("  {}", e)
+                                }
+                                process::exit(1);
+                            }
                         };
                     };
                 } else if entry_type.is_file() {
-                    print!("{} ... ", &entry_path.display());
+                    print!("{} ... ", entry_path.display());
 
                     let mut source = OpenOptions::new()
                         .read(true)
                         .write(true)
                         .open(&entry_path)
-                        .expect("Failed to read source file");
+                        .unwrap_or_else(|e| {
+                            println!("ERROR");
+                            println!("Error: Failed to read source file");
+                            if args.debug == true {
+                                println!("  {}", e)
+                            }
+                            process::exit(1);
+                        });
                     let mut dest = OpenOptions::new()
                         .read(true)
                         .write(true)
                         .create(true)
                         .open(&new_entry_path)
-                        .expect("Failed to create destination file");
+                        .unwrap_or_else(|e| {
+                            println!("ERROR");
+                            println!("Error: Failed to read/create destination file");
+                            if args.debug == true {
+                                println!("  {}", e)
+                            }
+                            process::exit(1);
+                        });
 
                     match crypto.encrypt_stream(&mut source, &mut dest) {
                         Ok(_) => println!("Ok"),
-                        Err(e) => panic!("Failed to encrypt: {}", e),
+                        Err(e) => {
+                            println!("ERROR");
+                            println!("Error: Failed to encrypt");
+                            if args.debug == true {
+                                println!("  {}", e)
+                            }
+                            process::exit(1);
+                        }
                     };
                 } else {
-                    println!("Skipped entry: Unknown type");
+                    println!("{} ... SKIPPED (unknown type)", entry_path.display());
                 };
             }
         } else if entry_metadata.file_type().is_file() {
@@ -118,26 +150,47 @@ pub fn action(args: &Command) {
                 .read(true)
                 .write(true)
                 .open(&input_path)
-                .expect("Failed to read source file");
+                .unwrap_or_else(|e| {
+                    println!("ERROR");
+                    println!("Error: Failed to read source file");
+                    if args.debug == true {
+                        println!("  {}", e)
+                    }
+                    process::exit(1);
+                });
             let mut dest = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .create(true)
                 .open(&output_path)
-                .expect("Failed to create destination file");
+                .unwrap_or_else(|e| {
+                    println!("ERROR");
+                    println!("Error: Failed to read/create destination file");
+                    if args.debug == true {
+                        println!("  {}", e)
+                    }
+                    process::exit(1);
+                });
 
             match crypto.encrypt_stream(&mut source, &mut dest) {
                 Ok(_) => println!("Ok"),
-                Err(e) => panic!("Failed to encrypt: {}", e),
+                Err(e) => {
+                    println!("ERROR");
+                    println!("Error: Failed to encrypt");
+                    if args.debug == true {
+                        println!("  {}", e)
+                    }
+                    process::exit(1);
+                }
             };
         } else {
             // The case where the entry is something else
-            println!("Skipped entry: Unknown type");
+            println!("{} ... SKIPPED (unknown type)", input_path.display());
         }
     }
 
     println!(
-        "Done: All Ok ({}ms elapsed)",
+        "\nDone: All Ok ({}ms elapsed)",
         timer.elapsed().unwrap_or_default().as_millis()
     )
 }
