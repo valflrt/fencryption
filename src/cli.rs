@@ -10,13 +10,7 @@ struct Cli {
     command: commands::CommandEnum,
 
     /// Enable debug log
-    #[clap(
-        short = 'D',
-        long,
-        value_parser,
-        default_value_t = false,
-        global = true
-    )]
+    #[clap(short = 'D', long, required = false, global = true)]
     debug: bool,
 }
 
