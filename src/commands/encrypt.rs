@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File},
+    fs::{self, OpenOptions},
     io,
     path::PathBuf,
     time,
@@ -89,9 +89,17 @@ pub fn action(args: &Command) {
                 } else if entry_type.is_file() {
                     print!("{} ... ", &entry_path.display());
 
-                    let mut source = File::open(&entry_path).expect("Failed to read source file");
-                    let mut dest =
-                        File::create(&new_entry_path).expect("Failed to create destination file");
+                    let mut source = OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .open(&entry_path)
+                        .expect("Failed to read source file");
+                    let mut dest = OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .create(true)
+                        .open(&new_entry_path)
+                        .expect("Failed to create destination file");
 
                     match crypto.encrypt_stream(&mut source, &mut dest) {
                         Ok(_) => println!("Ok"),
@@ -106,8 +114,17 @@ pub fn action(args: &Command) {
 
             print!("{} ... ", input_path.display());
 
-            let mut source = File::open(&input_path).expect("Failed to read source file");
-            let mut dest = File::create(&output_path).expect("Failed to create destination file");
+            let mut source = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&input_path)
+                .expect("Failed to read source file");
+            let mut dest = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(&output_path)
+                .expect("Failed to create destination file");
 
             match crypto.encrypt_stream(&mut source, &mut dest) {
                 Ok(_) => println!("Ok"),
