@@ -30,4 +30,4 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 - [x] Add io stream enc-/decryption features
 - [x] Setup directory recursive mapping
 - [ ] Enhance log and error handling
-- [ ] Setup cli
+- [ ] Enhance cli
