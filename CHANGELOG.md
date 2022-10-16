@@ -1,6 +1,6 @@
 # Changelog
 
-## `v0.1.3`
+## `v0.1.4`
 
 - Base features (encrypting/decrypting) and commands (encrypt/decrypt)
 - No pretty error display (system error message)
