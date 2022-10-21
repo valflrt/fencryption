@@ -14,18 +14,21 @@ use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 /// key
 pub struct Command {
     /// Key used to decrypt
-    #[clap(value_parser)]
     key: String,
 
     /// Paths of the encrypted file(s)/directory(ies) to
     /// decrypt
-    #[clap(value_parser)]
     paths: Vec<String>,
 
     /// Set output path (only supported when one input path
     /// provided)
-    #[clap(short, long, value_parser)]
+    #[clap(short, long)]
     output_path: Option<String>,
+
+    /// Whether to overwrite the output file/directory already
+    /// exists
+    #[clap(short = 'O', long)]
+    overwrite: bool,
 
     #[clap(from_global)]
     debug: bool,
@@ -34,10 +37,19 @@ pub struct Command {
 pub fn action(args: &Command) {
     let timer = time::SystemTime::now();
 
-    let crypto = Crypto::new(args.key.as_bytes());
+    let crypto = match Crypto::new(args.key.as_bytes()) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Error: Failed to create cipher");
+            if args.debug == true {
+                println!("  - {:?}", e)
+            }
+            process::exit(1);
+        }
+    };
 
     if args.output_path.is_some() && args.paths.len() != 1 {
-        println!("\nError: Only one input path can be provided when setting an output path");
+        println!("Error: Only one input path can be provided when setting an output path");
         process::exit(1);
     }
 
@@ -53,8 +65,26 @@ pub fn action(args: &Command) {
             }
         };
 
+        if input_path.exists() == false {
+            println!("Error: The item pointed by the given path doesn't exist");
+            process::exit(1);
+        }
+
+        if output_path.exists() == true && args.overwrite == false {
+            println!(
+                "Error: The output file/directory already exists (use --overwrite to force overwrite)"
+            );
+            process::exit(1);
+        }
+
         // Reads entry metadata to act in consequence
-        let entry_metadata = fs::metadata(&input_path).expect("Failed to read entry metadata");
+        let entry_metadata = fs::metadata(&input_path).unwrap_or_else(|e| {
+            println!("Error: Failed to read entry metadata");
+            if args.debug == true {
+                println!("  - {:?}", e)
+            }
+            process::exit(1);
+        });
         if entry_metadata.file_type().is_dir() {
             // The case where the entry is a directory
 
@@ -64,36 +94,58 @@ pub fn action(args: &Command) {
                 match e.kind() {
                     io::ErrorKind::AlreadyExists => (),
                     _ => {
-                        println!("\nError: Failed to create base directory");
+                        println!("Error: Failed to create base directory");
                         if args.debug == true {
-                            println!("  {}", e)
+                            println!("  - {:?}", e)
                         }
                         process::exit(1);
                     }
                 };
             };
 
-            let walk_dir = WalkDir::new(&input_path).expect("Failed to read directory");
+            let walk_dir = WalkDir::new(&input_path).unwrap_or_else(|e| {
+                println!("Error: Failed to read directory");
+                if args.debug == true {
+                    println!("  - {:?}", e)
+                }
+                process::exit(1);
+            });
 
             // Runs for every entry in the specified directory
             for entry in walk_dir {
-                let entry = entry.expect("Failed to read entry");
+                let entry = entry.unwrap_or_else(|e| {
+                    println!("Error: Failed to read entry");
+                    if args.debug == true {
+                        println!("  - {:?}", e)
+                    }
+                    process::exit(1);
+                });
                 let entry_path = entry.path();
-                let new_entry_path = output_path.join(
-                    entry_path
-                        .strip_prefix(&input_path)
-                        .expect("Failed to establish relative file path"),
-                );
+                let new_entry_path =
+                    output_path.join(entry_path.strip_prefix(&input_path).unwrap_or_else(|e| {
+                        println!("\nError: Failed to establish relative file path");
+                        if args.debug == true {
+                            println!("  - {:?}", e)
+                        }
+                        process::exit(1);
+                    }));
 
-                let entry_type = entry.file_type().expect("Failed to read file type");
+                // Reads entry type to act depending on it
+                let entry_type = entry.file_type().unwrap_or_else(|e| {
+                    println!("Error: Failed to read file type");
+                    if args.debug == true {
+                        println!("  - {:?}", e)
+                    }
+                    process::exit(1);
+                });
                 if entry_type.is_dir() {
                     if let Err(e) = fs::create_dir(&new_entry_path) {
                         match e.kind() {
                             io::ErrorKind::AlreadyExists => (),
                             e => {
-                                println!("\nError: Failed to create sub-directory");
+                                println!("Error: Failed to create sub-directory");
                                 if args.debug == true {
-                                    println!("  {}", e)
+                                    println!("  - {:?}", e)
                                 }
                                 process::exit(1);
                             }
@@ -110,7 +162,7 @@ pub fn action(args: &Command) {
                             println!("ERROR");
                             println!("\nError: Failed to read source file");
                             if args.debug == true {
-                                println!("  {}", e)
+                                println!("  - {:?}", e)
                             }
                             process::exit(1);
                         });
@@ -123,7 +175,7 @@ pub fn action(args: &Command) {
                             println!("ERROR");
                             println!("\nError: Failed to read/create destination file");
                             if args.debug == true {
-                                println!("  {}", e)
+                                println!("  - {:?}", e)
                             }
                             process::exit(1);
                         });
@@ -134,7 +186,7 @@ pub fn action(args: &Command) {
                             println!("ERROR");
                             println!("\nError: Failed to decrypt");
                             if args.debug == true {
-                                println!("  {}", e)
+                                println!("  - {:?}", e)
                             }
                             process::exit(1);
                         }
@@ -156,7 +208,7 @@ pub fn action(args: &Command) {
                     println!("ERROR");
                     println!("\nError: Failed to read source file");
                     if args.debug == true {
-                        println!("  {}", e)
+                        println!("  - {:?}", e)
                     }
                     process::exit(1);
                 });
@@ -169,7 +221,7 @@ pub fn action(args: &Command) {
                     println!("ERROR");
                     println!("\nError: Failed to read/create destination file");
                     if args.debug == true {
-                        println!("  {}", e)
+                        println!("  - {:?}", e)
                     }
                     process::exit(1);
                 });
@@ -180,7 +232,7 @@ pub fn action(args: &Command) {
                     println!("ERROR");
                     println!("\nError: Failed to decrypt");
                     if args.debug == true {
-                        println!("  {}", e)
+                        println!("  - {:?}", e)
                     }
                     process::exit(1);
                 }
