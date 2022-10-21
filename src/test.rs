@@ -1,7 +1,6 @@
 use std::{
     env,
     fs::{self, File},
-    io::Write,
 };
 
 use crate::crypto::Crypto;
@@ -11,188 +10,135 @@ const PLAIN_DATA: &[u8] = b"hello :)";
 
 #[test]
 fn encrypt_data_without_error() {
-    let crypto = Crypto::new(KEY);
-
-    match crypto.encrypt(PLAIN_DATA) {
-        Ok(_) => (),
-        Err(_) => panic!("Failed to encrypt"),
-    };
+    let crypto = Crypto::new(KEY).unwrap();
+    crypto.encrypt(PLAIN_DATA).unwrap();
 }
 
 #[test]
 fn decrypt_data_without_error() {
-    let crypto = Crypto::new(KEY);
-
-    let encrypted_data = match crypto.encrypt(PLAIN_DATA) {
-        Ok(enc) => enc,
-        Err(_) => panic!("Failed to encrypt"),
-    };
-
-    match crypto.decrypt(&encrypted_data) {
-        Ok(_) => (),
-        Err(_) => panic!("Failed to decrypt"),
-    };
+    let crypto = Crypto::new(KEY).unwrap();
+    let encrypted_data = crypto.encrypt(PLAIN_DATA).unwrap();
+    crypto.decrypt(&encrypted_data).unwrap();
 }
 
 #[test]
 fn can_encrypt_then_decrypt_and_get_original_data() {
-    let crypto = Crypto::new(KEY);
-
-    let encrypted_data = match crypto.encrypt(PLAIN_DATA) {
-        Ok(enc) => enc,
-        Err(_) => panic!("Failed to encrypt"),
-    };
-
-    let new_plain_data = match crypto.decrypt(&encrypted_data) {
-        Ok(dec) => dec,
-        Err(_) => panic!("Failed to decrypt"),
-    };
-
+    let crypto = Crypto::new(KEY).unwrap();
+    let encrypted_data = crypto.encrypt(PLAIN_DATA).unwrap();
+    let new_plain_data = crypto.decrypt(&encrypted_data).unwrap();
     assert_eq!(&new_plain_data, PLAIN_DATA);
 }
 
 #[test]
 #[should_panic]
 fn fail_to_decrypt_data_when_key_is_wrong() {
-    let crypto1 = Crypto::new(KEY);
-    let crypto2 = Crypto::new(&[KEY, b"nope"].concat());
-
-    let encrypted_data = match crypto1.encrypt(PLAIN_DATA) {
-        Ok(enc) => enc,
-        Err(_) => panic!("Failed to encrypt"),
-    };
-
-    match crypto2.decrypt(&encrypted_data) {
-        Ok(_) => (),
-        Err(_) => panic!("Failed to decrypt"),
-    };
+    let crypto1 = Crypto::new(KEY).unwrap();
+    let crypto2 = Crypto::new(&[KEY, b"nope"].concat()).unwrap();
+    let encrypted_data = crypto1.encrypt(PLAIN_DATA).unwrap();
+    crypto2.decrypt(&encrypted_data).unwrap();
 }
 
 #[test]
-fn encrypt_stream_without_error() {
-    let crypto = Crypto::new(KEY);
+fn encrypt_file_without_error() {
+    let crypto = Crypto::new(KEY).unwrap();
 
-    File::create(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to create source file")
-        .write_all(PLAIN_DATA)
-        .expect("Failed to write test data to source file");
+    let tmp_dir = env::temp_dir();
+    let plain_path = tmp_dir.join("encrypt_stream_test");
+    let enc_path = tmp_dir.join("encrypt_stream_test.enc");
+    let dec_path = tmp_dir.join("encrypt_stream_test.dec");
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to create destination file");
+    fs::remove_file(&plain_path).ok();
+    fs::remove_file(&enc_path).ok();
+    fs::remove_file(&dec_path).ok();
 
-    crypto
-        .encrypt_stream(&mut source, &mut dest)
-        .expect("Failed to encrypt file");
+    fs::write(&plain_path, PLAIN_DATA).unwrap();
+
+    let mut plain = File::open(&plain_path).unwrap();
+    let mut enc = File::create(&enc_path).unwrap();
+
+    crypto.encrypt_stream(&mut plain, &mut enc).unwrap();
 }
 
 #[test]
-fn decrypt_stream_without_error() {
-    let crypto = Crypto::new(KEY);
+fn decrypt_file_without_error() {
+    let crypto = Crypto::new(KEY).unwrap();
 
-    File::create(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to create source file")
-        .write_all(PLAIN_DATA)
-        .expect("Failed to write test data to source file");
+    let tmp_dir = env::temp_dir();
+    let plain_path = tmp_dir.join("encrypt_stream_test");
+    let enc_path = tmp_dir.join("encrypt_stream_test.enc");
+    let dec_path = tmp_dir.join("encrypt_stream_test.dec");
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to create destination file");
+    fs::remove_file(&plain_path).ok();
+    fs::remove_file(&enc_path).ok();
+    fs::remove_file(&dec_path).ok();
 
-    crypto
-        .encrypt_stream(&mut source, &mut dest)
-        .expect("Failed to encrypt file");
+    fs::write(&plain_path, PLAIN_DATA).unwrap();
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.dec"))
-        .expect("Failed to create destination file");
+    let mut plain = File::open(&plain_path).unwrap();
+    let mut enc = File::create(&enc_path).unwrap();
 
-    crypto
-        .decrypt_stream(&mut source, &mut dest)
-        .expect("Failed to decrypt file");
+    crypto.encrypt_stream(&mut plain, &mut enc).unwrap();
+
+    let mut enc = File::open(&enc_path).unwrap();
+    let mut dec = File::create(&dec_path).unwrap();
+
+    crypto.decrypt_stream(&mut enc, &mut dec).unwrap();
 }
 
 #[test]
-fn encrypt_then_decrypt_stream_and_get_original_data() {
-    let crypto = Crypto::new(KEY);
+fn encrypt_then_decrypt_file_and_get_original_data() {
+    let crypto = Crypto::new(KEY).unwrap();
 
-    File::create(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to create source file")
-        .write_all(PLAIN_DATA)
-        .expect("Failed to write test data to source file");
+    let tmp_dir = env::temp_dir();
+    let plain_path = tmp_dir.join("encrypt_stream_test");
+    let enc_path = tmp_dir.join("encrypt_stream_test.enc");
+    let dec_path = tmp_dir.join("encrypt_stream_test.dec");
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to create destination file");
+    fs::remove_file(&plain_path).ok();
+    fs::remove_file(&enc_path).ok();
+    fs::remove_file(&dec_path).ok();
 
-    crypto
-        .encrypt_stream(&mut source, &mut dest)
-        .expect("Failed to encrypt file");
+    fs::write(&plain_path, PLAIN_DATA).unwrap();
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.dec"))
-        .expect("Failed to create destination file");
+    let mut plain = File::open(&plain_path).unwrap();
+    let mut enc = File::create(&enc_path).unwrap();
 
-    crypto
-        .decrypt_stream(&mut source, &mut dest)
-        .expect("Failed to decrypt file");
+    crypto.encrypt_stream(&mut plain, &mut enc).unwrap();
 
-    println!(
-        "{}",
-        fs::read_to_string(&env::temp_dir().join("encrypt_stream_test.dec"))
-            .expect("Failed to read decrypted file")
-    );
+    let mut enc = File::open(&enc_path).unwrap();
+    let mut dec = File::create(&dec_path).unwrap();
 
-    assert_eq!(
-        PLAIN_DATA,
-        fs::read(&env::temp_dir().join("encrypt_stream_test.dec"))
-            .expect("Failed to read decrypted file")
-    )
+    crypto.decrypt_stream(&mut enc, &mut dec).unwrap();
+
+    assert_eq!(fs::read(&dec_path).unwrap(), PLAIN_DATA[..]);
 }
 
 #[test]
 #[should_panic]
-fn fail_to_decrypt_stream_when_key_is_wrong() {
-    let crypto1 = Crypto::new(KEY);
-    let crypto2 = Crypto::new(&[KEY, b"nope"].concat());
+fn fail_to_decrypt_file_when_key_is_wrong() {
+    let crypto1 = Crypto::new(KEY).unwrap();
+    let crypto2 = Crypto::new(&[KEY, b"nope"].concat()).unwrap();
 
-    File::create(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to create source file")
-        .write_all(PLAIN_DATA)
-        .expect("Failed to write test data to source file");
+    let tmp_dir = env::temp_dir();
+    let plain_path = tmp_dir.join("encrypt_stream_test");
+    let enc_path = tmp_dir.join("encrypt_stream_test.enc");
+    let dec_path = tmp_dir.join("encrypt_stream_test.dec");
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to create destination file");
+    fs::remove_file(&plain_path).ok();
+    fs::remove_file(&enc_path).ok();
+    fs::remove_file(&dec_path).ok();
 
-    crypto1
-        .encrypt_stream(&mut source, &mut dest)
-        .expect("Failed to encrypt file");
+    fs::write(&plain_path, PLAIN_DATA).unwrap();
 
-    let mut source = File::open(&env::temp_dir().join("encrypt_stream_test.enc"))
-        .expect("Failed to open destination file");
-    let mut dest = File::create(&env::temp_dir().join("encrypt_stream_test.dec"))
-        .expect("Failed to create destination file");
+    let mut plain = File::open(&plain_path).unwrap();
+    let mut enc = File::create(&enc_path).unwrap();
 
-    crypto2
-        .decrypt_stream(&mut source, &mut dest)
-        .expect("Failed to decrypt file");
+    crypto1.encrypt_stream(&mut plain, &mut enc).unwrap();
 
-    println!(
-        "{}",
-        fs::read_to_string(&env::temp_dir().join("encrypt_stream_test.dec"))
-            .expect("Failed to read decrypted file")
-    );
+    let mut enc = File::open(&enc_path).unwrap();
+    let mut dec = File::create(&dec_path).unwrap();
 
-    assert_eq!(
-        PLAIN_DATA,
-        fs::read(&env::temp_dir().join("encrypt_stream_test.dec"))
-            .expect("Failed to read decrypted file")
-    )
+    crypto2.decrypt_stream(&mut enc, &mut dec).unwrap();
+
+    assert_eq!(PLAIN_DATA[..], fs::read(&dec_path).unwrap());
 }
