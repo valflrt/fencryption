@@ -10,4 +10,3 @@ base64 = "0.13.0"
 clap = { version = "3.2.17", features = ["derive"] }
 rand = "0.8.5"
 ring = "0.16.20"
-rust-crypto = "^0.2"
