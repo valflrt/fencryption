@@ -111,6 +111,7 @@ pub fn action(args: &Command) {
 
             // Runs for every entry in the specified directory
             for entry in walk_dir {
+                // TODO: Figure out how multithreading could be implemented
                 let entry = entry.unwrap_or_else(|e| {
                     println!("Error: Failed to read entry");
                     if args.debug == true {
