@@ -29,8 +29,9 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 - [x] Add default file encryption features
 - [x] Add io stream enc-/decryption features
 - [x] Setup directory recursive mapping
-- [ ] Improve log and error handling
-- [ ] Improve cli
+- [x] Improve log and error handling
+- [x] Improve cli
+- [x] Implement multithreading
 
 ### Possible todo _(things that could be added in the future)_
 

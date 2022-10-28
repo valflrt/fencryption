@@ -8,6 +8,7 @@ use std::{
 use clap::Args;
 
 use fencryption::{crypto::Crypto, walk_dir::WalkDir};
+use threadpool::ThreadPool;
 
 #[derive(Args)]
 /// Encrypt specified file/directory using the passed key
@@ -34,17 +35,6 @@ pub struct Command {
 
 pub fn action(args: &Command) {
     let timer = time::SystemTime::now();
-
-    let crypto = match Crypto::new(args.key.as_bytes()) {
-        Ok(v) => v,
-        Err(e) => {
-            println!("Error: Failed to create cipher");
-            if args.debug == true {
-                println!("  - {:?}", e)
-            }
-            process::exit(1);
-        }
-    };
 
     if args.output_path.is_some() && args.paths.len() != 1 {
         println!("Error: Only one input path can be provided when setting an output path");
@@ -109,9 +99,12 @@ pub fn action(args: &Command) {
                 process::exit(1);
             });
 
+            let threadpool = ThreadPool::new(8);
+
             // Runs for every entry in the specified directory
             for entry in walk_dir {
-                // TODO: Figure out how multithreading could be implemented
+                let debug_mode = args.debug.clone();
+
                 let entry = entry.unwrap_or_else(|e| {
                     println!("Error: Failed to read entry");
                     if args.debug == true {
@@ -129,71 +122,83 @@ pub fn action(args: &Command) {
                         process::exit(1);
                     }));
 
-                // Reads entry type to act depending on it
-                let entry_type = entry.file_type().unwrap_or_else(|e| {
-                    println!("Error: Failed to read file type");
+                let crypto = Crypto::new(args.key.as_bytes()).unwrap_or_else(|e| {
+                    println!("Error: Failed to create cipher");
                     if args.debug == true {
                         println!("  - {:?}", e)
                     }
                     process::exit(1);
                 });
-                if entry_type.is_dir() {
-                    if let Err(e) = fs::create_dir(&new_entry_path) {
-                        match e.kind() {
-                            io::ErrorKind::AlreadyExists => (),
-                            e => {
-                                println!("Error: Failed to create sub-directory");
-                                if args.debug == true {
+
+                threadpool.execute(move || {
+                    // Reads entry type to act depending on it
+                    let entry_type = entry.file_type().unwrap_or_else(|e| {
+                        println!("Error: Failed to read file type");
+                        if debug_mode == true {
+                            println!("  - {:?}", e)
+                        }
+                        process::exit(1);
+                    });
+                    if entry_type.is_dir() {
+                        if let Err(e) = fs::create_dir(&new_entry_path) {
+                            match e.kind() {
+                                io::ErrorKind::AlreadyExists => (),
+                                e => {
+                                    println!("Error: Failed to create sub-directory");
+                                    if debug_mode == true {
+                                        println!("  - {:?}", e)
+                                    }
+                                    process::exit(1);
+                                }
+                            };
+                        };
+                    } else if entry_type.is_file() {
+                        print!("{} ... ", entry_path.display());
+
+                        let mut source = OpenOptions::new()
+                            .read(true)
+                            .write(true)
+                            .open(&entry_path)
+                            .unwrap_or_else(|e| {
+                                println!("ERROR");
+                                println!("\nError: Failed to read source file");
+                                if debug_mode == true {
+                                    println!("  - {:?}", e)
+                                }
+                                process::exit(1);
+                            });
+                        let mut dest = OpenOptions::new()
+                            .read(true)
+                            .write(true)
+                            .create(true)
+                            .open(&new_entry_path)
+                            .unwrap_or_else(|e| {
+                                println!("ERROR");
+                                println!("\nError: Failed to read/create destination file");
+                                if debug_mode == true {
+                                    println!("  - {:?}", e)
+                                }
+                                process::exit(1);
+                            });
+
+                        match crypto.encrypt_stream(&mut source, &mut dest) {
+                            Ok(_) => println!("Ok"),
+                            Err(e) => {
+                                println!("ERROR");
+                                println!("\nError: Failed to encrypt");
+                                if debug_mode == true {
                                     println!("  - {:?}", e)
                                 }
                                 process::exit(1);
                             }
                         };
+                    } else {
+                        println!("{} ... SKIPPED (unknown type)", entry_path.display());
                     };
-                } else if entry_type.is_file() {
-                    print!("{} ... ", entry_path.display());
-
-                    let mut source = OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .open(&entry_path)
-                        .unwrap_or_else(|e| {
-                            println!("ERROR");
-                            println!("\nError: Failed to read source file");
-                            if args.debug == true {
-                                println!("  - {:?}", e)
-                            }
-                            process::exit(1);
-                        });
-                    let mut dest = OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .create(true)
-                        .open(&new_entry_path)
-                        .unwrap_or_else(|e| {
-                            println!("ERROR");
-                            println!("\nError: Failed to read/create destination file");
-                            if args.debug == true {
-                                println!("  - {:?}", e)
-                            }
-                            process::exit(1);
-                        });
-
-                    match crypto.encrypt_stream(&mut source, &mut dest) {
-                        Ok(_) => println!("Ok"),
-                        Err(e) => {
-                            println!("ERROR");
-                            println!("\nError: Failed to encrypt");
-                            if args.debug == true {
-                                println!("  - {:?}", e)
-                            }
-                            process::exit(1);
-                        }
-                    };
-                } else {
-                    println!("{} ... SKIPPED (unknown type)", entry_path.display());
-                };
+                });
             }
+
+            threadpool.join();
         } else if entry_metadata.file_type().is_file() {
             // The case where the entry is a file
 
@@ -224,6 +229,14 @@ pub fn action(args: &Command) {
                     }
                     process::exit(1);
                 });
+
+            let crypto = Crypto::new(args.key.as_bytes()).unwrap_or_else(|e| {
+                println!("Error: Failed to create cipher");
+                if args.debug == true {
+                    println!("  - {:?}", e)
+                }
+                process::exit(1);
+            });
 
             match crypto.encrypt_stream(&mut source, &mut dest) {
                 Ok(_) => println!("Ok"),
