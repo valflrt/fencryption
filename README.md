@@ -10,9 +10,9 @@
 
   <p align="center">
     <a href="https://github.com/valflrt/fencryption-rust/issues/new"><b>Report Bug</b></a>
-    <!-- <br />
-    <a href="https://github.com/valflrt/fencryption-rust/blob/master/CHANGELOG.md"><b>Changelog</b></a>
     <br />
+    <a href="https://github.com/valflrt/fencryption-rust/blob/master/CHANGELOG.md"><b>Changelog</b></a>
+    <!-- <br />
     <a href="https://github.com/valflrt/fencryption-rust/releases/latest"><b>Download</b></a> -->
   </p>
 </p>
