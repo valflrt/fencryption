@@ -54,6 +54,7 @@ Options:
 - [x] Improve log and error handling
 - [x] Improve cli
 - [x] Implement multithreading
+- [ ] Edit encryption process so the output file is smaller
 
 ## Ideas
 
