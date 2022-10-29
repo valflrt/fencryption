@@ -5,29 +5,27 @@ use std::{
     process, time,
 };
 
-use clap::Args;
+use clap::{arg, Args};
 
 use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 use threadpool::ThreadPool;
 
-#[derive(Args)]
-/// Decrypt specified encrypted file/directory using the passed
-/// key
+#[derive(Args, Clone)]
+/// Encrypt specified file/directory using the passed key
 pub struct Command {
     /// Key used to decrypt
     key: String,
 
     /// Paths of the encrypted file(s)/directory(ies) to
     /// decrypt
-    paths: Vec<String>,
+    paths: Vec<PathBuf>,
 
     /// Set output path (only supported when one input path
     /// provided)
-    #[clap(short, long)]
-    output_path: Option<String>,
+    #[arg(short, long)]
+    output_path: Option<PathBuf>,
 
-    /// Whether to overwrite the output file/directory already
-    /// exists
+    /// Whether to overwrite the output file/directory
     #[clap(short = 'O', long)]
     overwrite: bool,
 
@@ -37,20 +35,28 @@ pub struct Command {
 
 pub fn action(args: &Command) {
     let timer = time::SystemTime::now();
+    let mut counter: u128 = 0;
 
     if args.output_path.is_some() && args.paths.len() != 1 {
         println!("Error: Only one input path can be provided when setting an output path");
         process::exit(1);
     }
 
+    let crypto = Crypto::new(args.key.as_bytes()).unwrap_or_else(|e| {
+        println!("Error: Failed to create cipher");
+        if args.debug == true {
+            println!("  - {:?}", e)
+        }
+        process::exit(1);
+    });
+
     // Runs for every provided input path
     for input_path in &args.paths {
-        let input_path = PathBuf::from(input_path);
         let output_path = match &args.output_path {
-            Some(v) => PathBuf::from(v),
+            Some(v) => v.to_owned(),
             None => {
-                let mut path = PathBuf::from(&input_path);
-                path.set_extension("dec");
+                let mut path = input_path.clone();
+                path.set_extension("enc");
                 path
             }
         };
@@ -62,13 +68,13 @@ pub fn action(args: &Command) {
 
         if output_path.exists() == true && args.overwrite == false {
             println!(
-                "Error: The output file/directory already exists (use --overwrite to force overwrite)"
+                "Error: The output file/directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)"
             );
             process::exit(1);
         }
 
         // Reads entry metadata to act in consequence
-        let entry_metadata = fs::metadata(&input_path).unwrap_or_else(|e| {
+        let entry_metadata = fs::metadata(input_path).unwrap_or_else(|e| {
             println!("Error: Failed to read entry metadata");
             if args.debug == true {
                 println!("  - {:?}", e)
@@ -93,7 +99,7 @@ pub fn action(args: &Command) {
                 };
             };
 
-            let walk_dir = WalkDir::new(&input_path).unwrap_or_else(|e| {
+            let walk_dir = WalkDir::new(input_path).unwrap_or_else(|e| {
                 println!("Error: Failed to read directory");
                 if args.debug == true {
                     println!("  - {:?}", e)
@@ -105,7 +111,9 @@ pub fn action(args: &Command) {
 
             // Runs for every entry in the specified directory
             for entry in walk_dir {
-                let debug_mode = args.debug.clone();
+                let crypto = crypto.clone();
+
+                let args = args.clone();
 
                 let entry = entry.unwrap_or_else(|e| {
                     println!("Error: Failed to read entry");
@@ -116,7 +124,7 @@ pub fn action(args: &Command) {
                 });
                 let entry_path = entry.path();
                 let new_entry_path =
-                    output_path.join(entry_path.strip_prefix(&input_path).unwrap_or_else(|e| {
+                    output_path.join(entry_path.strip_prefix(input_path).unwrap_or_else(|e| {
                         println!("\nError: Failed to establish relative file path");
                         if args.debug == true {
                             println!("  - {:?}", e)
@@ -124,47 +132,38 @@ pub fn action(args: &Command) {
                         process::exit(1);
                     }));
 
-                let crypto = Crypto::new(args.key.as_bytes()).unwrap_or_else(|e| {
-                    println!("Error: Failed to create cipher");
+                // Reads entry type to act depending on it
+                let entry_type = entry.file_type().unwrap_or_else(|e| {
+                    println!("Error: Failed to read file type");
                     if args.debug == true {
                         println!("  - {:?}", e)
                     }
                     process::exit(1);
                 });
-
-                threadpool.execute(move || {
-                    // Reads entry type to act depending on it
-                    let entry_type = entry.file_type().unwrap_or_else(|e| {
-                        println!("Error: Failed to read file type");
-                        if debug_mode == true {
-                            println!("  - {:?}", e)
-                        }
-                        process::exit(1);
-                    });
-                    if entry_type.is_dir() {
-                        if let Err(e) = fs::create_dir(&new_entry_path) {
-                            match e.kind() {
-                                io::ErrorKind::AlreadyExists => (),
-                                e => {
-                                    println!("Error: Failed to create sub-directory");
-                                    if debug_mode == true {
-                                        println!("  - {:?}", e)
-                                    }
-                                    process::exit(1);
+                if entry_type.is_dir() {
+                    if let Err(e) = fs::create_dir(&new_entry_path) {
+                        match e.kind() {
+                            io::ErrorKind::AlreadyExists => (),
+                            e => {
+                                println!("Error: Failed to create sub-directory");
+                                if args.debug == true {
+                                    println!("  - {:?}", e)
                                 }
-                            };
+                                process::exit(1);
+                            }
                         };
-                    } else if entry_type.is_file() {
-                        print!("{} ... ", entry_path.display());
-
+                    };
+                } else if entry_type.is_file() {
+                    counter += 1;
+                    threadpool.execute(move || {
                         let mut source = OpenOptions::new()
                             .read(true)
                             .write(true)
                             .open(&entry_path)
                             .unwrap_or_else(|e| {
-                                println!("ERROR");
+                                println!("[ERROR] {}", entry.path().display());
                                 println!("\nError: Failed to read source file");
-                                if debug_mode == true {
+                                if args.debug == true {
                                     println!("  - {:?}", e)
                                 }
                                 process::exit(1);
@@ -175,43 +174,40 @@ pub fn action(args: &Command) {
                             .create(true)
                             .open(&new_entry_path)
                             .unwrap_or_else(|e| {
-                                println!("ERROR");
+                                println!("[ERROR] {}", entry.path().display());
                                 println!("\nError: Failed to read/create destination file");
-                                if debug_mode == true {
+                                if args.debug == true {
                                     println!("  - {:?}", e)
                                 }
                                 process::exit(1);
                             });
 
                         match crypto.decrypt_stream(&mut source, &mut dest) {
-                            Ok(_) => println!("Ok"),
+                            Ok(_) => println!("[OK] {}", entry.path().display()),
                             Err(e) => {
-                                println!("ERROR");
+                                println!("[ERROR] {}", entry.path().display());
                                 println!("\nError: Failed to decrypt");
-                                if debug_mode == true {
+                                if args.debug == true {
                                     println!("  - {:?}", e)
                                 }
                                 process::exit(1);
                             }
                         };
-                    } else {
-                        println!("{} ... SKIPPED (unknown type)", entry_path.display());
-                    };
-                });
+                    });
+                } else {
+                    println!("[SKIPPED] {} (unknown type)", entry_path.display());
+                };
             }
 
             threadpool.join();
         } else if entry_metadata.file_type().is_file() {
             // The case where the entry is a file
-
-            print!("{} ... ", input_path.display());
-
             let mut source = OpenOptions::new()
                 .read(true)
                 .write(true)
-                .open(&input_path)
+                .open(input_path)
                 .unwrap_or_else(|e| {
-                    println!("ERROR");
+                    println!("[ERROR] {}", input_path.display());
                     println!("\nError: Failed to read source file");
                     if args.debug == true {
                         println!("  - {:?}", e)
@@ -224,7 +220,7 @@ pub fn action(args: &Command) {
                 .create(true)
                 .open(&output_path)
                 .unwrap_or_else(|e| {
-                    println!("ERROR");
+                    println!("[ERROR] {}", input_path.display());
                     println!("\nError: Failed to read/create destination file");
                     if args.debug == true {
                         println!("  - {:?}", e)
@@ -232,18 +228,13 @@ pub fn action(args: &Command) {
                     process::exit(1);
                 });
 
-            let crypto = Crypto::new(args.key.as_bytes()).unwrap_or_else(|e| {
-                println!("Error: Failed to create cipher");
-                if args.debug == true {
-                    println!("  - {:?}", e)
-                }
-                process::exit(1);
-            });
-
             match crypto.decrypt_stream(&mut source, &mut dest) {
-                Ok(_) => println!("Ok"),
+                Ok(_) => {
+                    println!("[OK] {}", input_path.display());
+                    counter += 1;
+                }
                 Err(e) => {
-                    println!("ERROR");
+                    println!("[ERROR] {}", input_path.display());
                     println!("\nError: Failed to decrypt");
                     if args.debug == true {
                         println!("  - {:?}", e)
@@ -258,7 +249,8 @@ pub fn action(args: &Command) {
     }
 
     println!(
-        "\nDone: All Ok ({}ms elapsed)",
+        "\nDone: Decrypted {} files in {}ms",
+        counter,
         timer.elapsed().unwrap_or_default().as_millis()
     )
 }
