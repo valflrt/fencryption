@@ -56,7 +56,16 @@ pub fn action(args: &Command) {
             Some(v) => v.to_owned(),
             None => {
                 let mut path = input_path.clone();
-                path.set_extension("enc");
+                path.set_file_name(
+                    [
+                        path.file_name()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or_default(),
+                        ".dec",
+                    ]
+                    .concat(),
+                );
                 path
             }
         };
