@@ -16,6 +16,7 @@ pub enum ErrorKind {
     Io(io::Error),
 }
 
+#[derive(Clone)]
 pub struct Crypto {
     cipher: Aes256Gcm,
 }

@@ -1,9 +1,9 @@
-use clap::Parser;
+use clap::{command, Parser};
 
 use crate::commands;
 
 #[derive(Parser)]
-#[clap(name = "fencryption", version)]
+#[command(name = "fencryption", version)]
 /// A program to encrypt/decrypt files and full directories
 struct Cli {
     #[clap(subcommand)]
