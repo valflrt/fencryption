@@ -23,6 +23,28 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 
 **THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.**
 
+## Usage
+
+```
+fencryption --help
+```
+
+```
+A program to encrypt/decrypt files and full directories
+
+Usage: fencryption [OPTIONS] <COMMAND>
+
+Commands:
+  encrypt  Encrypt specified file/directory using the passed key
+  decrypt  Encrypt specified file/directory using the passed key
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -D, --debug    Enable debug log
+  -h, --help     Print help information
+  -V, --version  Print version information
+```
+
 ## Todo
 
 - [x] Provide better help about commands
@@ -37,6 +59,6 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 
 > things that **_could_** be added in the future
 
-- [ ] Encrypting would make a .bin file with all the encrypted files packed inside
-  - [ ] Command "open" would create a directory where decrypted files appear
-  - [ ] Command "close" would update the .bin file with the changes made in the directory
+- Encrypting would make a .bin file with all the encrypted files packed inside
+  - Command "open" would create a directory where decrypted files appear
+  - Command "close" would update the .bin file with the changes made in the directory
