@@ -33,9 +33,9 @@ A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (b
 - [x] Improve cli
 - [x] Implement multithreading
 
-### Possible todo _(things that could be added in the future)_
+## Ideas
 
-> Those are just some ideas, they are not concrete yet
+> things that **_could_** be added in the future
 
 - [ ] Encrypting would make a .bin file with all the encrypted files packed inside
   - [ ] Command "open" would create a directory where decrypted files appear
