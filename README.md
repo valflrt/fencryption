@@ -17,9 +17,11 @@
   </p>
 </p>
 
-# Fencryption (rust)
+# Fencryption (Rust)
 
-A remake of [Fencryption](https://github.com/valflrt/fencryption) but in rust (because typescript sucks a lil' bit for this kind of project...).
+> This is the new version of [Fencryption](https://github.com/valflrt/fencryption) but in Rust (Why did I switch language along the way ? because typescript was not the most suitable language for this kind of project and also because I wanted to try Rust and low-level programming)
+
+Fencryption is program to encrypt and decrypt files and full directories. Note that this project is at an early stage of development.
 
 **THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.**
 
@@ -49,14 +51,13 @@ Options:
 
 - [x] Provide better help about commands
 - [x] Add default file encryption features
-- [x] Add io stream enc-/decryption features
+- [x] Add stream enc-/decryption features
 - [x] Setup directory recursive mapping
-- [x] Improve log and error handling
-- [x] Improve cli
+- [x] Improve log, error handling and cli
 - [x] Implement multithreading
 - [x] Edit encryption process so the output file is smaller
-- [ ] Encrypting makes a file with all the encrypted files packed inside (a "pack")
-  - [ ] Command `create` creates a "pack" from the specified directory
+- [ ] Add "packing" feature: encrypting makes a file with all the encrypted files packed inside (a "pack")
+  - [ ] Command `create` creates a "pack" with the specified directory
   - [ ] Command `open` creates a directory where decrypted files (from the encrypted "pack") appear
   - [ ] Command `close` updates the "pack" with the changes made in the directory
 
