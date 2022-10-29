@@ -1,6 +1,6 @@
 # Changelog
 
-## `v0.1.5`
+## `v0.1.6`
 
 - Add multithreading for directory encryption (speed goes brrr)
 - Switch from chacha20poly1305 to aes_gcm
@@ -8,6 +8,7 @@
 - Greatly improve logging
 - Filenames are still not encrypted
 - Encrypted directory still keeps original directory structure
+- Misc fixes
 
 ## `v0.1.4`
 

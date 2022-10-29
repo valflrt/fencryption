@@ -54,12 +54,14 @@ Options:
 - [x] Improve log and error handling
 - [x] Improve cli
 - [x] Implement multithreading
-- [ ] Edit encryption process so the output file is smaller
+- [x] Edit encryption process so the output file is smaller
+- [ ] Encrypting makes a file with all the encrypted files packed inside (a "pack")
+  - [ ] Command `create` creates a "pack" from the specified directory
+  - [ ] Command `open` creates a directory where decrypted files (from the encrypted "pack") appear
+  - [ ] Command `close` updates the "pack" with the changes made in the directory
 
 ## Ideas
 
 > things that **_could_** be added in the future
 
-- Encrypting would make a .bin file with all the encrypted files packed inside
-  - Command "open" would create a directory where decrypted files appear
-  - Command "close" would update the .bin file with the changes made in the directory
+_Nothing for now_
