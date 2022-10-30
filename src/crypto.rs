@@ -34,7 +34,7 @@ impl Crypto {
         })
     }
 
-    /// Basic function to encrypt
+    /// Basic function to encrypt.
     pub fn encrypt_with_nonce(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         match self.cipher.encrypt(Nonce::from_slice(iv), plaintext) {
             Ok(v) => Ok(v),
@@ -42,7 +42,7 @@ impl Crypto {
         }
     }
 
-    /// Basic function to decrypt
+    /// Basic function to decrypt.
     pub fn decrypt_with_nonce(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         match self.cipher.decrypt(Nonce::from_slice(iv), ciphertext) {
             Ok(v) => Ok(v),
@@ -50,9 +50,10 @@ impl Crypto {
         }
     }
 
-    /// Encrypt a small piece of data
+    /// Encrypt a small piece of data.
     ///
     /// Example:
+    ///
     /// ```
     /// use fencryption::crypto::Crypto;
     ///
@@ -71,9 +72,10 @@ impl Crypto {
         Ok([iv, self.encrypt_with_nonce(plain, iv)?.as_slice()].concat())
     }
 
-    /// Decrypt a small piece of data
+    /// Decrypt a small piece of data.
     ///
     /// Example:
+    ///
     /// ```
     /// use fencryption::crypto::Crypto;
     ///
@@ -94,9 +96,11 @@ impl Crypto {
         self.decrypt_with_nonce(ciphertext, iv)
     }
 
-    /// Encrypt a stream from a source (io::File) and a destination (io::File)
+    /// Encrypt a stream from a source (io::File) and a
+    /// destination (io::File).
     ///
     /// Example:
+    ///
     /// ```rust
     /// use std::{
     ///     env,
@@ -154,9 +158,11 @@ impl Crypto {
         Ok(())
     }
 
-    /// Decrypt a stream from a source (io::File) and a destination (io::File)
+    /// Decrypt a stream from a source (io::File) and a
+    /// destination (io::File).
     ///
     /// Example:
+    ///
     /// ```rust
     /// use std::{
     ///     env,
@@ -211,7 +217,7 @@ impl Crypto {
                 return Err(ErrorKind::Io(e));
             };
 
-            // Stops when the loop reached the end of the file
+            // Stops when the loop reached the end of the file.
             if read_len != BUFFER_LEN {
                 break;
             };

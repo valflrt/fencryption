@@ -50,7 +50,7 @@ pub fn action(args: &Command) {
         process::exit(1);
     });
 
-    // Runs for every provided input path
+    // Runs for every provided input path.
     for input_path in &args.paths {
         let output_path = match &args.output_path {
             Some(v) => v.to_owned(),
@@ -82,7 +82,7 @@ pub fn action(args: &Command) {
             process::exit(1);
         }
 
-        // Reads entry metadata to act in consequence
+        // Reads entry metadata to act in consequence.
         let entry_metadata = fs::metadata(input_path).unwrap_or_else(|e| {
             println!("Error: Failed to read entry metadata");
             if args.debug == true {
@@ -91,10 +91,10 @@ pub fn action(args: &Command) {
             process::exit(1);
         });
         if entry_metadata.file_type().is_dir() {
-            // The case where the entry is a directory
+            // The case where the entry is a directory.
 
             // Creates base directory to put encrypted files
-            // in
+            // in.
             if let Err(e) = fs::create_dir(&output_path) {
                 match e.kind() {
                     io::ErrorKind::AlreadyExists => (),
@@ -118,7 +118,7 @@ pub fn action(args: &Command) {
 
             let threadpool = ThreadPool::new(8);
 
-            // Runs for every entry in the specified directory
+            // Runs for every entry in the specified directory.
             for entry in walk_dir {
                 let crypto = crypto.clone();
 
@@ -141,7 +141,7 @@ pub fn action(args: &Command) {
                         process::exit(1);
                     }));
 
-                // Reads entry type to act depending on it
+                // Reads entry type to act depending on it.
                 let entry_type = entry.file_type().unwrap_or_else(|e| {
                     println!("Error: Failed to read file type");
                     if args.debug == true {
@@ -210,7 +210,7 @@ pub fn action(args: &Command) {
 
             threadpool.join();
         } else if entry_metadata.file_type().is_file() {
-            // The case where the entry is a file
+            // The case where the entry is a file.
             let mut source = OpenOptions::new()
                 .read(true)
                 .write(true)
@@ -252,7 +252,7 @@ pub fn action(args: &Command) {
                 }
             };
         } else {
-            // The case where the entry is something else
+            // The case where the entry is something else.
             println!("{} ... SKIPPED (unknown type)", input_path.display());
         }
     }
