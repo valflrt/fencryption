@@ -6,9 +6,10 @@ use std::{
     io::{self, Read, Write},
 };
 
+use crate::constants::DEFAULT_BUFFER_LEN;
+
 const IV_LEN: usize = 96 / 8; // 12
 const TAG_LEN: usize = 128 / 8; // 16
-const DEFAULT_BUFFER_LEN: usize = 8192;
 
 #[derive(Debug)]
 pub enum ErrorKind {
