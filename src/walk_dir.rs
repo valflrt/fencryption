@@ -1,30 +1,28 @@
-mod dir;
-mod dir_array;
-
-use dir::Dir;
-use dir_array::DirArray;
-
-use std::{fs::DirEntry, io, path::PathBuf};
+use std::{
+    fs::{self, DirEntry, ReadDir},
+    io,
+    path::PathBuf,
+};
 
 #[derive(Debug)]
-pub enum WalkDirErrorKind {
+pub enum ErrorKind {
     IOError(io::Error),
 }
 
-pub type Result<T, E = WalkDirErrorKind> = std::result::Result<T, E>;
+pub type Result<T, E = ErrorKind> = std::result::Result<T, E>;
 
 pub struct WalkDir {
-    dir_chain: DirArray,
+    levels: Vec<ReadDir>,
 }
 
 impl WalkDir {
     pub fn new(path: &PathBuf) -> Result<WalkDir> {
-        Ok(WalkDir {
-            dir_chain: DirArray::new(match Dir::new(path) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            }),
-        })
+        let mut levels = Vec::new();
+        levels.push(match fs::read_dir(&path) {
+            Ok(v) => v,
+            Err(e) => return Err(ErrorKind::IOError(e)),
+        });
+        Ok(WalkDir { levels })
     }
 }
 
@@ -32,23 +30,23 @@ impl Iterator for WalkDir {
     type Item = Result<DirEntry>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.dir_chain.current() {
-            Some(level) => match level.next() {
+        match self.levels.last_mut() {
+            Some(current_dir) => match current_dir.next() {
                 Some(Ok(entry)) => match entry.file_type() {
                     Ok(file_type) => {
                         if file_type.is_dir() {
-                            self.dir_chain.push(match Dir::new(&entry.path()) {
+                            self.levels.push(match fs::read_dir(&entry.path()) {
                                 Ok(v) => v,
-                                Err(e) => return Some(Err(e)),
+                                Err(e) => return Some(Err(ErrorKind::IOError(e))),
                             });
                         }
                         return Some(Ok(entry));
                     }
-                    Err(e) => return Some(Err(WalkDirErrorKind::IOError(e))),
+                    Err(e) => return Some(Err(ErrorKind::IOError(e))),
                 },
-                Some(Err(e)) => return Some(Err(e)),
+                Some(Err(e)) => return Some(Err(ErrorKind::IOError(e))),
                 None => {
-                    self.dir_chain.pop();
+                    self.levels.pop();
                     return self.next();
                 }
             },
