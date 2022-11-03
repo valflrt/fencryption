@@ -1,9 +1,13 @@
+mod util;
+
 use std::{
     env,
     fs::{self, File},
 };
 
 use crate::crypto::Crypto;
+
+// Crypto tests
 
 const KEY: &[u8] = b"my_super_key";
 const PLAIN_DATA: &[u8] = b"hello :)";
@@ -142,3 +146,5 @@ fn fail_to_decrypt_file_when_key_is_wrong() {
 
     assert_eq!(PLAIN_DATA[..], fs::read(&dec_path).unwrap());
 }
+
+// WalkDir tests

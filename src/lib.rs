@@ -5,4 +5,4 @@ pub mod walk_dir;
 mod constants;
 
 #[cfg(test)]
-mod test;
+mod tests;
