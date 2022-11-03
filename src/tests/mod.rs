@@ -1,5 +1,3 @@
-mod util;
-
 use std::{
     env,
     fs::{self, File},
