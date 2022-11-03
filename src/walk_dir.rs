@@ -1,7 +1,7 @@
 use std::{
     fs::{self, DirEntry, ReadDir},
     io,
-    path::PathBuf,
+    path::Path,
 };
 
 #[derive(Debug)]
@@ -16,9 +16,9 @@ pub struct WalkDir {
 }
 
 impl WalkDir {
-    pub fn new(path: &PathBuf) -> Result<WalkDir> {
+    pub fn new<T: AsRef<Path>>(path: T) -> Result<WalkDir> {
         let mut levels = Vec::new();
-        levels.push(match fs::read_dir(&path) {
+        levels.push(match fs::read_dir(path) {
             Ok(v) => v,
             Err(e) => return Err(ErrorKind::IOError(e)),
         });
