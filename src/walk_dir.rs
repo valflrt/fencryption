@@ -16,7 +16,7 @@ pub struct WalkDir {
 }
 
 impl WalkDir {
-    pub fn new<T: AsRef<Path>>(path: T) -> Result<WalkDir> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<WalkDir> {
         let mut levels = Vec::new();
         levels.push(match fs::read_dir(path) {
             Ok(v) => v,
