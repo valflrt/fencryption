@@ -21,7 +21,5 @@ jobs:
         uses: ATiltedTree/setup-rust@v1.0.5
         with:
           rust-version: stable
-      - name: Compile
-        run: cargo check
-      - name: Test
+      - name: Compile and Test
         run: cargo test
