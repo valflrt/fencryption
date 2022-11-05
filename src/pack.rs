@@ -1,7 +1,7 @@
 use std::{
     fs::{self, OpenOptions},
     io::{self, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use crate::{
@@ -18,9 +18,7 @@ const HEADER_LEN: usize = PATH_LEN_LEN + FILE_LEN_LEN; // 12 bytes
 pub enum ErrorKind {
     IO(io::Error),
     WalkDir(walk_dir::ErrorKind),
-    TryFromIntError,
-    TryFromSliceError,
-    Utf8Error,
+    ConversionError,
     PathAlreadyExists,
     PathNotFound,
     PathError,
@@ -29,16 +27,23 @@ pub enum ErrorKind {
 type Result<T, E = ErrorKind> = std::result::Result<T, E>;
 
 /// Pack is used to pack files and their paths in a single
-/// file
+/// file.
 pub struct Pack(PathBuf);
 
 impl Pack {
-    /// Creates a new pack
-    pub fn new(path: &PathBuf) -> Pack {
-        Pack(path.to_path_buf())
+    pub fn new<P>(path: P) -> Pack
+    where
+        P: AsRef<PathBuf>,
+    {
+        Pack(path.as_ref().to_owned())
     }
 
-    pub fn create(&self, dir_path: &PathBuf) -> Result<()> {
+    /// Creates/Writes the pack file using the contents of the given
+    /// directory.
+    pub fn create<P>(&self, dir_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let mut pack_file = match OpenOptions::new().write(true).create(true).open(&self.0) {
             Ok(v) => v,
             Err(e) => return Err(ErrorKind::IO(e)),
@@ -98,6 +103,8 @@ impl Pack {
         Ok(())
     }
 
+    /// Unpacks the pack from the associated pack file (fails
+    /// if the pack file doesn't exist).
     pub fn unpack(&self) -> Result<()> {
         let mut pack_file = match OpenOptions::new().read(true).open(&self.0) {
             Ok(v) => v,
@@ -124,14 +131,14 @@ impl Pack {
                 return Err(ErrorKind::IO(e));
             };
 
-            // Creates file path
+            // Creates file path.
             let path = PathBuf::from(match self.0.file_stem() {
                 Some(v) => v,
                 None => return Err(ErrorKind::PathError),
             })
             .join(PathBuf::from(match std::str::from_utf8(&path_bytes) {
                 Ok(v) => v,
-                Err(_) => return Err(ErrorKind::Utf8Error),
+                Err(_) => return Err(ErrorKind::ConversionError),
             }));
 
             let parent_dir_path = match PathBuf::from(&path).parent() {
@@ -151,13 +158,13 @@ impl Pack {
                     .file_len_u64()
                     .div_euclid(match DEFAULT_BUFFER_LEN.try_into() {
                         Ok(v) => v,
-                        Err(_) => return Err(ErrorKind::TryFromIntError),
+                        Err(_) => return Err(ErrorKind::ConversionError),
                     });
             let rem = header
                 .file_len_u64()
                 .rem_euclid(match DEFAULT_BUFFER_LEN.try_into() {
                     Ok(v) => v,
-                    Err(_) => return Err(ErrorKind::TryFromIntError),
+                    Err(_) => return Err(ErrorKind::ConversionError),
                 });
 
             let mut buffer = [0u8; DEFAULT_BUFFER_LEN];
@@ -175,7 +182,7 @@ impl Pack {
                 0u8;
                 match rem.try_into() {
                     Ok(v) => v,
-                    Err(_) => return Err(ErrorKind::TryFromIntError),
+                    Err(_) => return Err(ErrorKind::ConversionError),
                 }
             ];
             match pack_file.read_exact(&mut buffer) {
@@ -209,8 +216,12 @@ pub struct FileHeader {
 
 impl FileHeader {
     /// Creates a pack file header.
-    pub fn new(file_path: &PathBuf, dir_path: &PathBuf) -> Result<FileHeader> {
-        let path_str = match file_path.strip_prefix(dir_path) {
+    pub fn new<P1, P2>(file_path: P1, dir_path: P2) -> Result<FileHeader>
+    where
+        P1: AsRef<Path>,
+        P2: AsRef<Path>,
+    {
+        let path_str = match file_path.as_ref().strip_prefix(dir_path) {
             Ok(v) => match v.to_str() {
                 Some(v) => v,
                 None => return Err(ErrorKind::PathError),
@@ -221,10 +232,10 @@ impl FileHeader {
         // The length of the path (as bytes).
         let path_len = match u32::try_from(path_str.as_bytes().len()) {
             Ok(v) => v,
-            Err(_) => return Err(ErrorKind::TryFromIntError),
+            Err(_) => return Err(ErrorKind::ConversionError),
         };
         // The length of the file.
-        let file_len = match fs::metadata(file_path) {
+        let file_len = match fs::metadata(file_path.as_ref()) {
             Ok(v) => v.len(),
             Err(e) => return Err(ErrorKind::IO(e)),
         };
@@ -240,18 +251,18 @@ impl FileHeader {
     pub fn from_bytes(bytes: &[u8; 12]) -> Result<FileHeader> {
         let path_len_bytes: [u8; PATH_LEN_LEN] = match (&bytes[..PATH_LEN_LEN]).try_into() {
             Ok(v) => v,
-            Err(_) => return Err(ErrorKind::TryFromSliceError),
+            Err(_) => return Err(ErrorKind::ConversionError),
         };
         let file_len_bytes: [u8; FILE_LEN_LEN] = match (&bytes[PATH_LEN_LEN..]).try_into() {
             Ok(v) => v,
-            Err(_) => return Err(ErrorKind::TryFromSliceError),
+            Err(_) => return Err(ErrorKind::ConversionError),
         };
 
         Ok(FileHeader {
             path: None,
             path_len: match u32::from_be_bytes(path_len_bytes).try_into() {
                 Ok(v) => v,
-                Err(_) => return Err(ErrorKind::TryFromIntError),
+                Err(_) => return Err(ErrorKind::ConversionError),
             },
             file_len: u64::from_be_bytes(file_len_bytes),
         })
@@ -276,7 +287,7 @@ impl FileHeader {
     pub fn path_len_usize(&self) -> Result<usize> {
         match self.path_len.try_into() {
             Ok(v) => Ok(v),
-            Err(_) => return Err(ErrorKind::TryFromIntError),
+            Err(_) => return Err(ErrorKind::ConversionError),
         }
     }
 
