@@ -18,11 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1.0.6
+        uses: ATiltedTree/setup-rust@v1.0.5
         with:
-          toolchain: stable
-          override: true
-          profile: minimal
+          rust-version: stable
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: fencryption

@@ -18,11 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1.0.6
+        uses: ATiltedTree/setup-rust@v1.0.5
         with:
-          toolchain: stable
-          override: true
-          profile: minimal
+          rust-version: stable
       - name: Compile
         run: cargo check
       - name: Test
