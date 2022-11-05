@@ -26,9 +26,12 @@ pub struct Crypto {
 impl Crypto {
     /// Creates a new Crypto instance, the given key will be
     /// used for every operation performed.
-    pub fn new(key: &[u8]) -> Result<Crypto, ErrorKind> {
+    pub fn new<K>(key: K) -> Result<Crypto, ErrorKind>
+    where
+        K: AsRef<[u8]>,
+    {
         Ok(Crypto {
-            cipher: match Aes256Gcm::new_from_slice(&hash_key(key)) {
+            cipher: match Aes256Gcm::new_from_slice(&hash_key(key.as_ref())) {
                 Ok(v) => v,
                 Err(e) => return Err(ErrorKind::InvalidKeyLength(e)),
             },
@@ -56,7 +59,7 @@ impl Crypto {
     /// Example:
     ///
     /// ```
-    /// use fencryption::crypto::Crypto;
+    /// use fencryption_lib::crypto::Crypto;
     ///
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
@@ -67,10 +70,12 @@ impl Crypto {
     ///
     /// assert_ne!(my_super_secret_message, enc);
     /// ```
-    pub fn encrypt(&self, plain: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn encrypt<P>(&self, plain: P) -> Result<Vec<u8>, ErrorKind>
+    where
+        P: AsRef<[u8]>,
+    {
         let iv = &random_iv();
-
-        Ok([iv, self.encrypt_with_nonce(plain, iv)?.as_slice()].concat())
+        Ok([iv, self.encrypt_with_nonce(plain.as_ref(), iv)?.as_slice()].concat())
     }
 
     /// Decrypt a small piece of data.
@@ -78,7 +83,7 @@ impl Crypto {
     /// Example:
     ///
     /// ```
-    /// use fencryption::crypto::Crypto;
+    /// use fencryption_lib::crypto::Crypto;
     ///
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
@@ -90,45 +95,45 @@ impl Crypto {
     ///
     /// assert_eq!(my_super_secret_message, dec);
     /// ```
-    pub fn decrypt(&self, enc: &[u8]) -> Result<Vec<u8>, ErrorKind> {
-        let iv = &enc[..IV_LEN];
-        let ciphertext = &enc[IV_LEN..];
+    pub fn decrypt<E>(&self, enc: E) -> Result<Vec<u8>, ErrorKind>
+    where
+        E: AsRef<[u8]>,
+    {
+        let iv = &enc.as_ref()[..IV_LEN];
+        let ciphertext = &enc.as_ref()[IV_LEN..];
 
         self.decrypt_with_nonce(ciphertext, iv)
     }
 
-    /// Encrypt a stream from a source (io::File) and a
-    /// destination (io::File).
+    /// Encrypt a stream from a source and a destination
+    /// (both [std::fs::File]).
     ///
     /// Example:
     ///
     /// ```rust
-    /// use std::{
-    ///     env,
-    ///     fs::{self, File},
-    /// };
-    /// use fencryption::crypto::Crypto;
+    /// use fencryption_lib::crypto::Crypto;
+    /// use fencryption_lib::test::util::TmpDir;
     ///
-    /// let my_super_key = "this_is_super_secure".as_bytes();
-    /// let my_super_secret_message = "hello :)".as_bytes();
+    /// let my_super_key = b"this_is_super_secure";
+    /// let my_super_secret_message = b"hello :)";
     ///
     /// let crypto = Crypto::new(my_super_key).unwrap();
     ///
-    /// let tmp_dir = env::temp_dir();
-    /// let plain_path = tmp_dir.join("encrypt_stream_test");
-    /// let enc_path = tmp_dir.join("encrypt_stream_test.enc");
-    /// let dec_path = tmp_dir.join("encrypt_stream_test.dec");
+    /// // Creates a temporary directory
+    /// let tmp_dir = TmpDir::new().unwrap();
     ///
-    /// fs::remove_file(&plain_path).ok();
-    /// fs::remove_file(&enc_path).ok();
-    /// fs::remove_file(&dec_path).ok();
-    ///
-    /// fs::write(&plain_path, my_super_secret_message).unwrap();
-    ///
-    /// let mut plain = File::open(&plain_path).unwrap();
-    /// let mut enc = File::create(&enc_path).unwrap();
-    ///
-    /// crypto.encrypt_stream(&mut plain, &mut enc).unwrap();
+    /// // tmp_dir.write_file is akin to std::fs::write
+    /// tmp_dir
+    ///     .write_file("plain", my_super_secret_message)
+    ///     .unwrap();
+    /// crypto
+    ///     .encrypt_stream(
+    ///         // tmp_dir.open_file is akin to std::fs::File::open
+    ///         &mut tmp_dir.open_file("plain").unwrap(),
+    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///         &mut tmp_dir.create_file("enc").unwrap(),
+    ///     )
+    ///     .unwrap();
     /// ```
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
         let iv = random_iv();
@@ -159,45 +164,46 @@ impl Crypto {
         Ok(())
     }
 
-    /// Decrypt a stream from a source (io::File) and a
-    /// destination (io::File).
+    /// Decrypt a stream from a source and a destination
+    /// (both [std::fs::File]).
     ///
     /// Example:
     ///
     /// ```rust
-    /// use std::{
-    ///     env,
-    ///     fs::{self, File},
-    /// };
-    /// use fencryption::crypto::Crypto;
+    /// use fencryption_lib::crypto::Crypto;
+    /// use fencryption_lib::test::util::TmpDir;
     ///
-    /// let my_super_key = "this_is_super_secure".as_bytes();
-    /// let my_super_secret_message = "hello :)".as_bytes();
+    /// let my_super_key = b"this_is_super_secure";
+    /// let my_super_secret_message = b"hello :)";
     ///
     /// let crypto = Crypto::new(my_super_key).unwrap();
     ///
-    /// let tmp_dir = env::temp_dir();
-    /// let plain_path = tmp_dir.join("encrypt_stream_test");
-    /// let enc_path = tmp_dir.join("encrypt_stream_test.enc");
-    /// let dec_path = tmp_dir.join("encrypt_stream_test.dec");
+    /// // Creates a temporary directory
+    /// let tmp_dir = TmpDir::new().unwrap();
     ///
-    /// fs::remove_file(&plain_path).ok();
-    /// fs::remove_file(&enc_path).ok();
-    /// fs::remove_file(&dec_path).ok();
+    /// // tmp_dir.write_file is akin to std::fs::write
+    /// tmp_dir
+    ///     .write_file("plain", my_super_secret_message)
+    ///     .unwrap();
+    /// crypto
+    ///     .encrypt_stream(
+    ///         // tmp_dir.open_file is akin to std::fs::File::open
+    ///         &mut tmp_dir.open_file("plain").unwrap(),
+    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///         &mut tmp_dir.create_file("enc").unwrap(),
+    ///     )
+    ///     .unwrap();
     ///
-    /// fs::write(&plain_path, my_super_secret_message).unwrap();
+    /// crypto
+    ///     .decrypt_stream(
+    ///         // tmp_dir.open_file is akin to std::fs::File::open
+    ///         &mut tmp_dir.open_file("enc").unwrap(),
+    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///         &mut tmp_dir.create_file("dec").unwrap(),
+    ///     )
+    ///     .unwrap();
     ///
-    /// let mut plain = File::open(&plain_path).unwrap();
-    /// let mut enc = File::create(&enc_path).unwrap();
-    ///
-    /// crypto.encrypt_stream(&mut plain, &mut enc).unwrap();
-    ///
-    /// let mut enc = File::open(&enc_path).unwrap();
-    /// let mut dec = File::create(&dec_path).unwrap();
-    ///
-    /// crypto.decrypt_stream(&mut enc, &mut dec).unwrap();
-    ///
-    /// assert_eq!(my_super_secret_message[..], fs::read(&dec_path).unwrap());
+    /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message);
     /// ```
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
         const BUFFER_LEN: usize = DEFAULT_BUFFER_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
@@ -228,8 +234,13 @@ impl Crypto {
     }
 }
 
-fn hash_key(key: &[u8]) -> Vec<u8> {
-    digest::digest(&digest::SHA256, key).as_ref().to_owned()
+fn hash_key<K>(key: K) -> Vec<u8>
+where
+    K: AsRef<[u8]>,
+{
+    digest::digest(&digest::SHA256, key.as_ref())
+        .as_ref()
+        .to_owned()
 }
 
 fn random_iv() -> Vec<u8> {
