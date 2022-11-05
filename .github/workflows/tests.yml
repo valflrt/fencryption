@@ -26,4 +26,4 @@ jobs:
       - name: Compile
         run: cargo check
       - name: Test
-        run: cargo test -- --test-threads 1
+        run: cargo test
