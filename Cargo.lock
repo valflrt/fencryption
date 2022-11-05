@@ -154,9 +154,11 @@ version = "0.1.6"
 dependencies = [
  "aes-gcm",
  "clap",
+ "human-duration",
  "rand",
  "ring",
  "threadpool",
+ "uuid",
 ]
 
 [[package]]
@@ -204,6 +206,12 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "human-duration"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37a429277d8afba0e1a2cf784b43f938dff72ce33e6aba477c3021997171c87b"
 
 [[package]]
 name = "inout"
@@ -445,6 +453,15 @@ name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
+
+[[package]]
+name = "uuid"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "feb41e78f93363bb2df8b0e86a2ca30eed7806ea16ea0c790d757cf93f79be83"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "version_check"

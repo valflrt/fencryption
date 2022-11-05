@@ -6,9 +6,10 @@ use std::{
 };
 
 use clap::{arg, Args};
+use human_duration::human_duration;
+use threadpool::ThreadPool;
 
 use fencryption::{crypto::Crypto, walk_dir::WalkDir};
-use threadpool::ThreadPool;
 
 #[derive(Args, Clone)]
 /// Encrypt specified file/directory using the passed key
@@ -260,6 +261,6 @@ pub fn action(args: &Command) {
     println!(
         "\nDone: Decrypted {} files in {}ms",
         counter,
-        timer.elapsed().unwrap_or_default().as_millis()
+        human_duration(&timer.elapsed().unwrap_or_default())
     )
 }
