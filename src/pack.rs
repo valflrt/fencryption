@@ -33,7 +33,7 @@ pub struct Pack(PathBuf);
 impl Pack {
     pub fn new<P>(path: P) -> Pack
     where
-        P: AsRef<PathBuf>,
+        P: AsRef<Path>,
     {
         Pack(path.as_ref().to_owned())
     }
@@ -105,7 +105,10 @@ impl Pack {
 
     /// Unpacks the pack from the associated pack file (fails
     /// if the pack file doesn't exist).
-    pub fn unpack(&self) -> Result<()> {
+    pub fn unpack<P>(&self, output_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let mut pack_file = match OpenOptions::new().read(true).open(&self.0) {
             Ok(v) => v,
             Err(e) => return Err(ErrorKind::IO(e)),
@@ -131,24 +134,21 @@ impl Pack {
                 return Err(ErrorKind::IO(e));
             };
 
-            // Creates file path.
-            let path = PathBuf::from(match self.0.file_stem() {
-                Some(v) => v,
-                None => return Err(ErrorKind::PathError),
-            })
-            .join(PathBuf::from(match std::str::from_utf8(&path_bytes) {
-                Ok(v) => v,
-                Err(_) => return Err(ErrorKind::ConversionError),
-            }));
+            let path = output_path
+                .as_ref()
+                .join(match std::str::from_utf8(&path_bytes) {
+                    Ok(v) => v,
+                    Err(_) => return Err(ErrorKind::ConversionError),
+                });
 
-            let parent_dir_path = match PathBuf::from(&path).parent() {
+            let parent_dir_path = match path.parent() {
                 Some(v) => v.to_path_buf(),
                 None => return Err(ErrorKind::PathError),
             };
             if let Err(e) = fs::create_dir_all(parent_dir_path) {
                 return Err(ErrorKind::IO(e));
             };
-            let mut file = match OpenOptions::new().write(true).create(true).open(path) {
+            let mut file = match OpenOptions::new().write(true).create(true).open(&path) {
                 Ok(v) => v,
                 Err(e) => return Err(ErrorKind::IO(e)),
             };

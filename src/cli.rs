@@ -1,6 +1,10 @@
+pub mod util;
+
 use clap::{command, Parser};
 
 use crate::commands;
+
+use self::util::{handle_error, handle_success};
 
 #[derive(Parser)]
 #[command(name = "fencryption", version)]
@@ -16,7 +20,21 @@ struct Cli {
 
 pub fn parse() {
     match &Cli::parse().command {
-        commands::CommandEnum::Encrypt(args) => commands::encrypt::action(args),
-        commands::CommandEnum::Decrypt(args) => commands::decrypt::action(args),
+        commands::CommandEnum::Encrypt(args) => match commands::encrypt::action(args) {
+            Ok(m) => handle_success(m),
+            Err(e) => handle_error(e),
+        },
+        commands::CommandEnum::Decrypt(args) => match commands::decrypt::action(args) {
+            Ok(m) => handle_success(m),
+            Err(e) => handle_error(e),
+        },
+        commands::CommandEnum::Pack(args) => match commands::pack::action(args) {
+            Ok(m) => handle_success(m),
+            Err(e) => handle_error(e),
+        },
+        commands::CommandEnum::Unpack(args) => match commands::unpack::action(args) {
+            Ok(m) => handle_success(m),
+            Err(e) => handle_error(e),
+        },
     }
 }
