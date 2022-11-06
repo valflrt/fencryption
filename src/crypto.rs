@@ -112,7 +112,7 @@ impl Crypto {
     ///
     /// ```rust
     /// use fencryption::crypto::Crypto;
-    /// use fencryption::test::util::TmpDir;
+    /// use fencryption::tmp_dir::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
@@ -171,7 +171,7 @@ impl Crypto {
     ///
     /// ```rust
     /// use fencryption::crypto::Crypto;
-    /// use fencryption::test::util::TmpDir;
+    /// use fencryption::tmp_dir::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";

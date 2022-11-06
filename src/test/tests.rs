@@ -1,5 +1,5 @@
 use crate::crypto::Crypto;
-use crate::test::util::TmpDir;
+use crate::tmp_dir::TmpDir;
 
 // Crypto tests
 

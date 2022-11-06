@@ -20,6 +20,11 @@ impl TmpDir {
         self.0.to_owned()
     }
 
+    /// Generates a new unique path in the temporary directory.
+    pub fn gen_path(&self) -> PathBuf {
+        self.0.join(uuid::Uuid::new_v4().to_string())
+    }
+
     /// Writes to a file (or create it if it doesn't exist) in the TmpDir, file_path must be
     /// relative. See [std::fs::write].
     pub fn write_file<P, C>(&self, file_path: P, contents: C) -> Result<(), std::io::Error>
@@ -62,9 +67,10 @@ impl TmpDir {
     }
 }
 
+/// Impl Drop trait so when the TmpDir is dropped, the directory
+/// is deleted.
 impl Drop for TmpDir {
     fn drop(&mut self) {
-        println!("{}", self.0.display());
         fs::remove_dir_all(&self.0).ok();
     }
 }
