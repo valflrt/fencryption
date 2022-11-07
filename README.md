@@ -56,10 +56,9 @@ Options:
 - [x] Improve log, error handling and cli
 - [x] Implement multithreading
 - [x] Edit encryption process so the output file is smaller
-- [ ] Add "packing" feature: encrypting makes a file with all the encrypted files packed inside (a "pack")
-  - [ ] Command `create` creates a "pack" with the specified directory
-  - [ ] Command `open` creates a directory where decrypted files (from the encrypted "pack") appear
-  - [ ] Command `close` updates the "pack" with the changes made in the directory
+- [x] Add "packing" feature: encrypting makes a file with all the encrypted files packed inside (a "pack")
+  - [x] Command `pack` creates a "pack" with the specified directory
+  - [x] Command `unpack` creates a directory where decrypted files (from the encrypted "pack") appear, updates the "pack" with the changes made in the directory (or discards them)
 
 ## Ideas
 
