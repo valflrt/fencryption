@@ -1,3 +1,4 @@
+pub mod log;
 pub mod util;
 
 use clap::{command, Parser};

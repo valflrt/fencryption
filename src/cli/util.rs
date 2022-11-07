@@ -1,17 +1,18 @@
+use super::log;
+
 /// Handles command action success
 pub fn handle_success(message: Option<String>) {
     if let Some(m) = message {
-        println!("\n{}", m);
+        log::println_success(m);
     };
     quit::with_code(0);
 }
 
 /// Handles command action error
 pub fn handle_error(error: ActionError) {
-    println!("[ERROR] {}", error.message);
-    println!("\nAn error occurred: {}", error.message);
+    log::println_error(error.message);
     if let Some(d) = error.debug_message {
-        println!("  - {:#?}", d)
+        log::println_error(format!("  - {}", d));
     };
     quit::with_code(1);
 }
