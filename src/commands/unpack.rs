@@ -160,7 +160,7 @@ pub fn action(args: &Command) -> ActionResult {
         return Ok(None);
     }
 
-    log::println_info("Press \"u\" to update the pack and any other key to discard changes");
+    log::println_info("Press 'u' to update the pack and 'q' other key to discard changes");
 
     let stdout = console::Term::buffered_stdout();
     loop {
@@ -266,7 +266,8 @@ pub fn action(args: &Command) -> ActionResult {
 
                     break;
                 }
-                _ => break,
+                'q' => break,
+                _ => continue,
             }
         }
     }
