@@ -10,7 +10,10 @@ use human_duration::human_duration;
 use rpassword::prompt_password;
 use threadpool::ThreadPool;
 
-use crate::cli::util::{ActionError, ActionResult};
+use crate::cli::{
+    log,
+    util::{ActionError, ActionResult},
+};
 use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 
 #[derive(Args, Clone)]
@@ -43,7 +46,7 @@ pub fn action(args: &Command) -> ActionResult {
         ));
     };
 
-    let key = match prompt_password("[INPUT] Key: ") {
+    let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
         Err(e) => {
             return Err(ActionError::new(
@@ -187,21 +190,24 @@ pub fn action(args: &Command) -> ActionResult {
                             .unwrap();
 
                         match crypto.decrypt_stream(&mut source, &mut dest) {
-                            Ok(_) => println!("[OK] {}", entry.path().display()),
+                            Ok(_) => log::println_success(format!("{} Ok", entry.path().display())),
                             Err(_) => panic!(),
                         };
                     });
                 } else {
-                    println!("[SKIPPED] {} (unknown entry type)", entry_path.display());
+                    log::println_info(format!(
+                        "Skipped {} (unknown entry type)",
+                        entry_path.display()
+                    ));
                 };
             }
 
             threadpool.join();
             if threadpool.panic_count() != 0 {
-                println!(
-                    "[WARNING] Failed to decrypt {} entries",
+                log::println_error(format!(
+                    "Failed to decrypt {} entries",
                     threadpool.panic_count()
-                );
+                ));
             };
         } else if input_path.is_file() {
             // The case where the entry is a file.
@@ -231,7 +237,7 @@ pub fn action(args: &Command) -> ActionResult {
 
             match crypto.decrypt_stream(&mut source, &mut dest) {
                 Ok(_) => {
-                    println!("[OK] {}", input_path.display());
+                    log::println_success(format!("{} Ok", input_path.display()));
                     counter += 1;
                 }
                 Err(e) => {
@@ -243,7 +249,10 @@ pub fn action(args: &Command) -> ActionResult {
             };
         } else {
             // The case where the entry is something else.
-            println!("{} ... SKIPPED (unknown type)", input_path.display());
+            log::println_info(format!(
+                "Skipped {} (unknown entry type)",
+                input_path.display()
+            ));
         };
     }
 

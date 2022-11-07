@@ -9,7 +9,10 @@ use clap::Args;
 use human_duration::human_duration;
 use rpassword::prompt_password;
 
-use crate::cli::util::{ActionError, ActionResult};
+use crate::cli::{
+    log,
+    util::{ActionError, ActionResult},
+};
 use fencryption::{crypto::Crypto, pack::Pack, tmp_dir::TmpDir};
 
 #[derive(Args)]
@@ -19,16 +22,16 @@ pub struct Command {
     /// Path of the pack to open
     path: PathBuf,
 
-    /// Whether to overwrite the output directory or not
-    #[clap(short = 'O', long)]
-    overwrite: bool,
+    /// Permanent unpack
+    #[clap(short = 'p', long)]
+    permanent: bool,
 
     #[clap(from_global)]
     debug: bool,
 }
 
 pub fn action(args: &Command) -> ActionResult {
-    let key = match prompt_password("[INPUT] Enter a key: ") {
+    let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
         Err(e) => {
             return Err(ActionError::new(
@@ -111,7 +114,7 @@ pub fn action(args: &Command) -> ActionResult {
 
     match crypto.decrypt_stream(&mut source, &mut dest) {
         Ok(_) => {
-            println!("[OK] Encrypted pack");
+            log::println_success("Encrypted pack");
         }
         Err(e) => {
             return Err(ActionError::new(
@@ -134,7 +137,7 @@ pub fn action(args: &Command) -> ActionResult {
 
     match Pack::new(&tmp_pack_path).unpack(&dir_path) {
         Ok(_) => {
-            println!("[OK] Unpacked pack");
+            log::println_success("Unpacked pack");
         }
         Err(e) => {
             return Err(ActionError::new(
@@ -148,12 +151,16 @@ pub fn action(args: &Command) -> ActionResult {
         }
     };
 
-    println!(
-        "[DONE] Decrypted pack in {}",
+    log::println_success(format!(
+        "Decrypted pack in {}",
         human_duration(&timer.elapsed().unwrap_or_default())
-    );
+    ));
 
-    println!("[INPUT] Press \"u\" to update the pack and any other key to discard changes");
+    if args.permanent {
+        return Ok(None);
+    }
+
+    log::println_info("Press \"u\" to update the pack and any other key to discard changes");
 
     let stdout = console::Term::buffered_stdout();
     loop {
@@ -255,7 +262,7 @@ pub fn action(args: &Command) -> ActionResult {
                         ));
                     };
 
-                    println!("[OK] Updated pack");
+                    log::println_success("Updated pack");
 
                     break;
                 }

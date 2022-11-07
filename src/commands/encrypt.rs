@@ -7,10 +7,13 @@ use std::{
 
 use clap::{arg, Args};
 use human_duration::human_duration;
-use rpassword::prompt_password;
+use rpassword::{self, prompt_password};
 use threadpool::ThreadPool;
 
-use crate::cli::util::{ActionError, ActionResult};
+use crate::cli::{
+    log,
+    util::{ActionError, ActionResult},
+};
 use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 
 #[derive(Args, Clone)]
@@ -35,6 +38,10 @@ pub struct Command {
 pub fn action(args: &Command) -> ActionResult {
     let mut counter: u128 = 0;
 
+    if args.paths.len() == 0 {
+        return Err(ActionError::new("You must provide at least one path", None));
+    }
+
     if args.output_path.is_some() && args.paths.len() != 1 {
         return Err(ActionError::new(
             "Only one input path can be provided when setting an output path",
@@ -42,7 +49,7 @@ pub fn action(args: &Command) -> ActionResult {
         ));
     };
 
-    let key = match prompt_password("[INPUT] Key: ") {
+    let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
         Err(e) => {
             return Err(ActionError::new(
@@ -51,24 +58,25 @@ pub fn action(args: &Command) -> ActionResult {
             ));
         }
     };
-    let confirm_key = match prompt_password("[INPUT] Confirm key: ") {
+    let confirm_key = match prompt_password(log::format_info("Confirm key: ")) {
         Ok(v) => v,
         Err(e) => {
             return Err(ActionError::new(
-                "Failed to read key",
+                "Failed to read confirm key",
                 Some(format!("  - {:?}", e)),
             ));
         }
     };
 
     if key.ne(&confirm_key) {
-        println!("Error: The two keys don't match");
-        quit::with_code(1);
+        return Err(ActionError::new("The two keys don't match", None));
     };
 
     if key.len() < 1 {
-        println!("Error: The key cannot be less than 1 character long");
-        quit::with_code(1);
+        return Err(ActionError::new(
+            "The key cannot be less than 1 character long",
+            None,
+        ));
     };
 
     let timer = time::SystemTime::now();
@@ -198,21 +206,24 @@ pub fn action(args: &Command) -> ActionResult {
                             .unwrap();
 
                         match crypto.encrypt_stream(&mut source, &mut dest) {
-                            Ok(_) => println!("[OK] {}", entry.path().display()),
+                            Ok(_) => log::println_success(format!("{} Ok", entry.path().display())),
                             Err(_) => panic!(),
                         };
                     });
                 } else {
-                    println!("[SKIPPED] {} (unknown entry type)", entry_path.display());
+                    log::println_info(format!(
+                        "Skipped {} (unknown entry type)",
+                        entry_path.display()
+                    ));
                 };
             }
 
             threadpool.join();
             if threadpool.panic_count() != 0 {
-                println!(
-                    "[WARNING] Failed to encrypt {} entries",
+                log::println_error(format!(
+                    "Failed to encrypt {} entries",
                     threadpool.panic_count()
-                );
+                ));
             };
         } else if input_path.is_file() {
             // The case where the entry is a file.
@@ -242,7 +253,7 @@ pub fn action(args: &Command) -> ActionResult {
 
             match crypto.encrypt_stream(&mut source, &mut dest) {
                 Ok(_) => {
-                    println!("[OK] {}", input_path.display());
+                    log::println_success(format!("{} Ok", input_path.display()));
                     counter += 1;
                 }
                 Err(e) => {
@@ -254,7 +265,10 @@ pub fn action(args: &Command) -> ActionResult {
             };
         } else {
             // The case where the entry is something else.
-            println!("{} ... SKIPPED (unknown type)", input_path.display());
+            log::println_info(format!(
+                "Skipped {} (unknown entry type)",
+                input_path.display()
+            ));
         };
     }
 

@@ -6,9 +6,12 @@ use std::{
 
 use clap::Args;
 use human_duration::human_duration;
-use rpassword::prompt_password;
+use rpassword::{self, prompt_password};
 
-use crate::cli::util::{ActionError, ActionResult};
+use crate::cli::{
+    log,
+    util::{ActionError, ActionResult},
+};
 use fencryption::{crypto::Crypto, pack::Pack, tmp_dir::TmpDir};
 
 #[derive(Args)]
@@ -29,9 +32,9 @@ pub struct Command {
 pub fn action(args: &Command) -> ActionResult {
     if !args.path.is_dir() {
         return Err(ActionError::new("The path must lead to a directory", None));
-    }
+    };
 
-    let key = match prompt_password("[INPUT] Enter a key: ") {
+    let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
         Err(e) => {
             return Err(ActionError::new(
@@ -40,7 +43,7 @@ pub fn action(args: &Command) -> ActionResult {
             ))
         }
     };
-    let confirm_key = match prompt_password("[INPUT] Confirm key: ") {
+    let confirm_key = match prompt_password(log::format_info("Confirm key: ")) {
         Ok(v) => v,
         Err(e) => {
             return Err(ActionError::new(
@@ -107,7 +110,7 @@ pub fn action(args: &Command) -> ActionResult {
 
     match Pack::new(&tmp_pack_path).create(&args.path) {
         Ok(_) => {
-            println!("[OK] Created pack");
+            log::println_success("Created pack");
         }
         Err(e) => {
             return Err(ActionError::new(
@@ -170,7 +173,7 @@ pub fn action(args: &Command) -> ActionResult {
 
     match crypto.encrypt_stream(&mut source, &mut dest) {
         Ok(_) => {
-            println!("[OK] Encrypted pack");
+            log::println_success("Encrypted pack");
         }
         Err(e) => {
             return Err(ActionError::new(
