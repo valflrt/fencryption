@@ -247,9 +247,9 @@ pub fn action(args: &Command) -> ActionResult {
         };
     }
 
-    Ok(format!(
+    Ok(Some(format!(
         "Decrypted {} files in {}",
         counter,
         human_duration(&timer.elapsed().unwrap_or_default())
-    ))
+    )))
 }

@@ -184,8 +184,8 @@ pub fn action(args: &Command) -> ActionResult {
         }
     };
 
-    Ok(format!(
+    Ok(Some(format!(
         "{} elapsed",
         human_duration(&timer.elapsed().unwrap_or_default())
-    ))
+    )))
 }

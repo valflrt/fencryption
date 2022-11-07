@@ -280,5 +280,5 @@ pub fn action(args: &Command) -> ActionResult {
         };
     };
 
-    Ok("Closed pack".to_string())
+    Ok(None)
 }

@@ -1,6 +1,8 @@
 /// Handles command action success
-pub fn handle_success(message: String) {
-    println!("\n{}", message);
+pub fn handle_success(message: Option<String>) {
+    if let Some(m) = message {
+        println!("\n{}", m);
+    };
     quit::with_code(0);
 }
 
@@ -31,4 +33,4 @@ impl ActionError {
     }
 }
 
-pub type ActionResult = Result<String, ActionError>;
+pub type ActionResult = Result<Option<String>, ActionError>;
