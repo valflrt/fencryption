@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    constants::DEFAULT_BUFFER_LEN,
+    constants::DEFAULT_BUF_LEN,
     walk_dir::{self, WalkDir},
 };
 
@@ -13,7 +13,6 @@ const PATH_LEN_LEN: usize = 32 / 8; // 4 bytes
 const FILE_LEN_LEN: usize = 64 / 8; // 8 bytes
 const HEADER_LEN: usize = PATH_LEN_LEN + FILE_LEN_LEN; // 12 bytes
 
-// TODO Edit ErrorKind arms (they are ugly)
 #[derive(Debug)]
 pub enum ErrorKind {
     IO(io::Error),
@@ -44,56 +43,39 @@ impl Pack {
     where
         P: AsRef<Path>,
     {
-        let mut pack_file = match OpenOptions::new().write(true).create(true).open(&self.0) {
-            Ok(v) => v,
-            Err(e) => return Err(ErrorKind::IO(e)),
-        };
+        let mut pack_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&self.0)
+            .map_err(|e| ErrorKind::IO(e))?;
 
-        let walk_dir = match WalkDir::new(&dir_path) {
-            Ok(v) => v,
-            Err(e) => return Err(ErrorKind::WalkDir(e)),
-        };
+        let walk_dir = WalkDir::new(&dir_path).map_err(|e| ErrorKind::WalkDir(e))?;
 
         for entry in walk_dir {
-            let entry = match entry {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::WalkDir(e)),
-            };
+            let entry = entry.map_err(|e| ErrorKind::WalkDir(e))?;
 
-            if match entry.metadata() {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::IO(e)),
-            }
-            .is_file()
-            {
-                let mut file = match OpenOptions::new().read(true).open(entry.path()) {
-                    Ok(v) => v,
-                    Err(e) => return Err(ErrorKind::IO(e)),
-                };
+            if entry.path().is_file() {
+                let mut file = OpenOptions::new()
+                    .read(true)
+                    .open(entry.path())
+                    .map_err(|e| ErrorKind::IO(e))?;
 
                 // Creates file header.
-                let header = match FileHeader::new(&entry.path(), &dir_path) {
-                    Ok(v) => v,
-                    Err(e) => return Err(e),
-                };
+                let header = FileHeader::new(&entry.path(), &dir_path)?;
 
                 // Writes file header to the pack.
-                if let Err(e) = pack_file.write_all(&header.to_vec()?) {
-                    return Err(ErrorKind::IO(e));
-                };
+                pack_file
+                    .write_all(&header.to_vec()?)
+                    .map_err(|e| ErrorKind::IO(e))?;
 
-                let mut buffer = [0u8; DEFAULT_BUFFER_LEN];
+                let mut buffer = [0u8; DEFAULT_BUF_LEN];
                 loop {
-                    let read_len = match file.read(&mut buffer) {
-                        Ok(v) => v,
-                        Err(e) => return Err(ErrorKind::IO(e)),
-                    };
+                    let read_len = file.read(&mut buffer).map_err(|e| ErrorKind::IO(e))?;
+                    pack_file
+                        .write(&buffer[..read_len])
+                        .map_err(|e| ErrorKind::IO(e))?;
 
-                    if let Err(e) = pack_file.write(&buffer[..read_len]) {
-                        return Err(ErrorKind::IO(e));
-                    };
-
-                    if read_len != DEFAULT_BUFFER_LEN {
+                    if read_len != DEFAULT_BUF_LEN {
                         break;
                     }
                 }
@@ -109,89 +91,72 @@ impl Pack {
     where
         P: AsRef<Path>,
     {
-        let mut pack_file = match OpenOptions::new().read(true).open(&self.0) {
-            Ok(v) => v,
-            Err(e) => return Err(ErrorKind::IO(e)),
-        };
+        let mut pack_file = OpenOptions::new()
+            .read(true)
+            .open(&self.0)
+            .map_err(|e| ErrorKind::IO(e))?;
 
         loop {
             let mut header_bytes = [0u8; HEADER_LEN];
-            let read_count = match pack_file.read(&mut header_bytes) {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::IO(e)),
-            };
+
+            let read_count = pack_file
+                .read(&mut header_bytes)
+                .map_err(|e| ErrorKind::IO(e))?;
             if read_count != header_bytes.len() {
                 break Ok(());
             };
 
-            let header = match FileHeader::from_bytes(&header_bytes) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
+            let header = FileHeader::from_bytes(&header_bytes)?;
 
             let mut path_bytes = vec![0u8; header.path_len_usize()?];
-            if let Err(e) = pack_file.read_exact(&mut path_bytes) {
-                return Err(ErrorKind::IO(e));
-            };
+            pack_file
+                .read_exact(&mut path_bytes)
+                .map_err(|e| ErrorKind::IO(e))?;
 
             let path = output_path
                 .as_ref()
-                .join(match std::str::from_utf8(&path_bytes) {
-                    Ok(v) => v,
-                    Err(_) => return Err(ErrorKind::ConversionError),
-                });
+                .join(std::str::from_utf8(&path_bytes).map_err(|_| ErrorKind::ConversionError)?);
 
-            let parent_dir_path = match path.parent() {
-                Some(v) => v.to_path_buf(),
-                None => return Err(ErrorKind::PathError),
-            };
-            if let Err(e) = fs::create_dir_all(parent_dir_path) {
-                return Err(ErrorKind::IO(e));
-            };
-            let mut file = match OpenOptions::new().write(true).create(true).open(&path) {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::IO(e)),
-            };
+            // Creates all parent directories.
+            let parent_dir_path = path.parent().ok_or(ErrorKind::PathError)?.to_path_buf();
+            fs::create_dir_all(parent_dir_path).map_err(|e| ErrorKind::IO(e))?;
 
-            let iterations =
-                header
-                    .file_len_u64()
-                    .div_euclid(match DEFAULT_BUFFER_LEN.try_into() {
-                        Ok(v) => v,
-                        Err(_) => return Err(ErrorKind::ConversionError),
-                    });
-            let rem = header
-                .file_len_u64()
-                .rem_euclid(match DEFAULT_BUFFER_LEN.try_into() {
-                    Ok(v) => v,
-                    Err(_) => return Err(ErrorKind::ConversionError),
-                });
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&path)
+                .map_err(|e| ErrorKind::IO(e))?;
 
-            let mut buffer = [0u8; DEFAULT_BUFFER_LEN];
-            for _ in 0..iterations {
-                match pack_file.read_exact(&mut buffer) {
-                    Ok(v) => v,
-                    Err(e) => return Err(ErrorKind::IO(e)),
-                };
-                if let Err(e) = file.write_all(&buffer) {
-                    return Err(ErrorKind::IO(e));
-                };
+            // Converts the default buffer length into u64
+            let buf_len_u64 = DEFAULT_BUF_LEN
+                .try_into()
+                .map_err(|_| ErrorKind::ConversionError)?;
+
+            // Gets the number of chunks to read before reaching
+            // the last bytes.
+            let chunks = header.file_len_u64().div_euclid(buf_len_u64);
+            // Gets the number of the remaining bytes (after
+            // reading all chunks).
+            let rem_len = usize::try_from(header.file_len_u64().rem_euclid(buf_len_u64))
+                .map_err(|_| ErrorKind::ConversionError)?;
+
+            // Reads all chunks and writes them to the output
+            // file.
+            let mut buffer = [0u8; DEFAULT_BUF_LEN];
+            for _ in 0..chunks {
+                pack_file
+                    .read_exact(&mut buffer)
+                    .map_err(|e| ErrorKind::IO(e))?;
+                file.write_all(&buffer).map_err(|e| ErrorKind::IO(e))?;
             }
 
-            let mut buffer = vec![
-                0u8;
-                match rem.try_into() {
-                    Ok(v) => v,
-                    Err(_) => return Err(ErrorKind::ConversionError),
-                }
-            ];
-            match pack_file.read_exact(&mut buffer) {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::IO(e)),
-            };
-            if let Err(e) = file.write_all(&buffer) {
-                return Err(ErrorKind::IO(e));
-            };
+            // Reads the remaining bytes and writes them to
+            // the output file.
+            let mut last = vec![0u8; rem_len];
+            pack_file
+                .read_exact(&mut last)
+                .map_err(|e| ErrorKind::IO(e))?;
+            file.write_all(&last).map_err(|e| ErrorKind::IO(e))?;
         }
     }
 
@@ -221,24 +186,20 @@ impl FileHeader {
         P1: AsRef<Path>,
         P2: AsRef<Path>,
     {
-        let path_str = match file_path.as_ref().strip_prefix(dir_path) {
-            Ok(v) => match v.to_str() {
-                Some(v) => v,
-                None => return Err(ErrorKind::PathError),
-            },
-            Err(_) => return Err(ErrorKind::PathError),
-        };
+        let path_str = file_path
+            .as_ref()
+            .strip_prefix(dir_path)
+            .map_err(|_| ErrorKind::PathError)?
+            .to_str()
+            .ok_or(ErrorKind::PathError)?;
 
         // The length of the path (as bytes).
-        let path_len = match u32::try_from(path_str.as_bytes().len()) {
-            Ok(v) => v,
-            Err(_) => return Err(ErrorKind::ConversionError),
-        };
+        let path_len =
+            u32::try_from(path_str.as_bytes().len()).map_err(|_| ErrorKind::ConversionError)?;
         // The length of the file.
-        let file_len = match fs::metadata(file_path.as_ref()) {
-            Ok(v) => v.len(),
-            Err(e) => return Err(ErrorKind::IO(e)),
-        };
+        let file_len = fs::metadata(file_path.as_ref())
+            .map_err(|e| ErrorKind::IO(e))?
+            .len();
 
         Ok(FileHeader {
             path: Some(PathBuf::from(path_str)),
@@ -249,21 +210,18 @@ impl FileHeader {
 
     /// Extracts a file header from an array of 12 bytes.
     pub fn from_bytes(bytes: &[u8; 12]) -> Result<FileHeader> {
-        let path_len_bytes: [u8; PATH_LEN_LEN] = match (&bytes[..PATH_LEN_LEN]).try_into() {
-            Ok(v) => v,
-            Err(_) => return Err(ErrorKind::ConversionError),
-        };
-        let file_len_bytes: [u8; FILE_LEN_LEN] = match (&bytes[PATH_LEN_LEN..]).try_into() {
-            Ok(v) => v,
-            Err(_) => return Err(ErrorKind::ConversionError),
-        };
+        let path_len_bytes: [u8; PATH_LEN_LEN] = bytes[..PATH_LEN_LEN]
+            .try_into()
+            .map_err(|_| ErrorKind::ConversionError)?;
+        let file_len_bytes: [u8; FILE_LEN_LEN] = bytes[PATH_LEN_LEN..]
+            .try_into()
+            .map_err(|_| ErrorKind::ConversionError)?;
 
         Ok(FileHeader {
             path: None,
-            path_len: match u32::from_be_bytes(path_len_bytes).try_into() {
-                Ok(v) => v,
-                Err(_) => return Err(ErrorKind::ConversionError),
-            },
+            path_len: u32::from_be_bytes(path_len_bytes)
+                .try_into()
+                .map_err(|_| ErrorKind::ConversionError)?,
             file_len: u64::from_be_bytes(file_len_bytes),
         })
     }
@@ -273,22 +231,18 @@ impl FileHeader {
         Ok([
             self.path_len.to_be_bytes().as_slice(),
             self.file_len.to_be_bytes().as_slice(),
-            match &self.path {
-                Some(v) => match v.to_str() {
-                    Some(v) => v.as_bytes(),
-                    None => return Err(ErrorKind::PathError),
-                },
-                None => return Err(ErrorKind::PathError),
-            },
+            self.path
+                .as_ref()
+                .ok_or(ErrorKind::PathError)?
+                .to_str()
+                .ok_or(ErrorKind::PathError)?
+                .as_bytes(),
         ]
         .concat())
     }
 
     pub fn path_len_usize(&self) -> Result<usize> {
-        match self.path_len.try_into() {
-            Ok(v) => Ok(v),
-            Err(_) => return Err(ErrorKind::ConversionError),
-        }
+        Ok(usize::try_from(self.path_len).map_err(|_| ErrorKind::ConversionError)?)
     }
 
     pub fn file_len_u64(&self) -> u64 {

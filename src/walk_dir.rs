@@ -18,10 +18,7 @@ pub struct WalkDir {
 impl WalkDir {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<WalkDir> {
         let mut levels = Vec::new();
-        levels.push(match fs::read_dir(path) {
-            Ok(v) => v,
-            Err(e) => return Err(ErrorKind::IOError(e)),
-        });
+        levels.push(fs::read_dir(path).map_err(|e| ErrorKind::IOError(e))?);
         Ok(WalkDir { levels })
     }
 }
