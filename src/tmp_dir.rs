@@ -1,10 +1,17 @@
 use std::{
     env,
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io,
     path::{Path, PathBuf},
 };
 
+/// TmpDir is a struct to manipulate a temporary directory.
+///
+/// The path argument in method that have it must be relative
+/// because it will be joined to the temporary directory path.
+///
+/// When this struct is dropped, the temporary directory is
+/// automatically deleted.
 pub struct TmpDir(PathBuf);
 
 impl TmpDir {
@@ -25,45 +32,64 @@ impl TmpDir {
         self.0.join(uuid::Uuid::new_v4().to_string())
     }
 
-    /// Writes to a file (or create it if it doesn't exist) in the TmpDir, file_path must be
-    /// relative. See [std::fs::write].
-    pub fn write_file<P, C>(&self, file_path: P, contents: C) -> Result<(), std::io::Error>
+    /// Writes to a file (or create it if it doesn't exist)
+    /// in the TmpDir. See [std::fs::write].
+    pub fn write_file<P, C>(&self, path: P, contents: C) -> io::Result<()>
     where
         P: AsRef<Path>,
         C: AsRef<[u8]>,
     {
-        assert!(file_path.as_ref().is_relative());
-        fs::write(self.path().join(file_path), contents)
+        fs::write(self.path().join(path), contents)
     }
 
-    /// Reads a file from the TmpDir, file_path must be
-    /// relative. See [std::fs::read].
-    pub fn read_file<P>(&self, file_path: P) -> Result<Vec<u8>, std::io::Error>
+    /// Reads a file from the TmpDir. See [std::fs::read].
+    pub fn read_file<P>(&self, path: P) -> io::Result<Vec<u8>>
     where
         P: AsRef<Path>,
     {
-        assert!(file_path.as_ref().is_relative());
-        fs::read(self.path().join(file_path))
+        fs::read(self.path().join(path))
     }
 
-    /// Creates a file in the TmpDir, file_path must be
-    /// relative. See [std::fs::File::create].
-    pub fn create_file<P>(&self, file_path: P) -> Result<File, std::io::Error>
+    /// Creates a directory. See [std::fs::create_dir].
+    pub fn create_dir<P>(&self, path: P) -> io::Result<()>
     where
         P: AsRef<Path>,
     {
-        assert!(file_path.as_ref().is_relative());
-        File::create(self.path().join(file_path))
+        fs::create_dir(self.path().join(path))
     }
 
-    /// Opens a file from the TmpDir, file_path must be
-    /// relative. See [std::fs::File::open].
-    pub fn open_file<P>(&self, file_path: P) -> Result<File, std::io::Error>
+    /// Creates a directory and all of its parent if they are
+    /// missing. See [std::fs::create_dir_all].
+    pub fn create_dir_all<P>(&self, path: P) -> io::Result<()>
     where
         P: AsRef<Path>,
     {
-        assert!(file_path.as_ref().is_relative());
-        File::open(self.path().join(file_path))
+        fs::create_dir_all(self.path().join(path))
+    }
+
+    /// Creates a file in the TmpDir. See [std::fs::File::create].
+    pub fn create_file<P>(&self, path: P) -> io::Result<File>
+    where
+        P: AsRef<Path>,
+    {
+        File::create(self.path().join(path))
+    }
+
+    /// Opens a file from the TmpDir. See [std::fs::File::open].
+    pub fn open_file<P>(&self, path: P) -> io::Result<File>
+    where
+        P: AsRef<Path>,
+    {
+        File::open(self.path().join(path))
+    }
+
+    /// Opens a file from the TmpDir using the provided
+    /// OpenOptions. See [std::fs::OpenOptions::open].
+    pub fn open_file_with_opts<P>(&self, opts: OpenOptions, path: P) -> io::Result<File>
+    where
+        P: AsRef<Path>,
+    {
+        opts.open(self.path().join(path))
     }
 }
 
