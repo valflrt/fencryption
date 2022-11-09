@@ -6,7 +6,7 @@ use std::{
     io::{self, Read, Write},
 };
 
-use crate::constants::DEFAULT_BUFFER_LEN;
+use crate::constants::DEFAULT_BUF_LEN;
 
 const IV_LEN: usize = 96 / 8; // 12
 const TAG_LEN: usize = 128 / 8; // 16
@@ -31,27 +31,25 @@ impl Crypto {
         K: AsRef<[u8]>,
     {
         Ok(Crypto {
-            cipher: match Aes256Gcm::new_from_slice(&hash_key(key.as_ref())) {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::InvalidKeyLength(e)),
-            },
+            cipher: Aes256Gcm::new_from_slice(&hash_key(key.as_ref()))
+                .map_err(|e| ErrorKind::InvalidKeyLength(e))?,
         })
     }
 
     /// Basic function to encrypt.
     pub fn encrypt_with_nonce(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
-        match self.cipher.encrypt(Nonce::from_slice(iv), plaintext) {
-            Ok(v) => Ok(v),
-            Err(e) => return Err(ErrorKind::AesError(e)),
-        }
+        Ok(self
+            .cipher
+            .encrypt(Nonce::from_slice(iv), plaintext)
+            .map_err(|e| ErrorKind::AesError(e))?)
     }
 
     /// Basic function to decrypt.
     pub fn decrypt_with_nonce(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
-        match self.cipher.decrypt(Nonce::from_slice(iv), ciphertext) {
-            Ok(v) => Ok(v),
-            Err(e) => Err(ErrorKind::AesError(e)),
-        }
+        Ok(self
+            .cipher
+            .decrypt(Nonce::from_slice(iv), ciphertext)
+            .map_err(|e| ErrorKind::AesError(e))?)
     }
 
     /// Encrypt a small piece of data.
@@ -138,22 +136,16 @@ impl Crypto {
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
         let iv = random_iv();
 
-        const BUFFER_LEN: usize = DEFAULT_BUFFER_LEN;
+        const BUFFER_LEN: usize = DEFAULT_BUF_LEN;
         let mut buffer = [0u8; BUFFER_LEN];
 
-        if let Err(e) = dest.write_all(&iv) {
-            return Err(ErrorKind::Io(e));
-        };
+        dest.write_all(&iv).map_err(|e| ErrorKind::Io(e))?;
 
         loop {
-            let read_len = match source.read(&mut buffer) {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::Io(e)),
-            };
+            let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
 
-            if let Err(e) = dest.write(&self.encrypt_with_nonce(&buffer[..read_len], &iv)?) {
-                return Err(ErrorKind::Io(e));
-            };
+            dest.write(&self.encrypt_with_nonce(&buffer[..read_len], &iv)?)
+                .map_err(|e| ErrorKind::Io(e))?;
 
             // Stops when the loop reached the end of the file
             if read_len != BUFFER_LEN {
@@ -206,23 +198,17 @@ impl Crypto {
     /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message);
     /// ```
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
-        const BUFFER_LEN: usize = DEFAULT_BUFFER_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
+        const BUFFER_LEN: usize = DEFAULT_BUF_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
         let mut buffer = [0u8; BUFFER_LEN];
 
         let mut iv = [0u8; IV_LEN];
-        if let Err(e) = source.read_exact(&mut iv) {
-            return Err(ErrorKind::Io(e));
-        };
+        source.read_exact(&mut iv).map_err(|e| ErrorKind::Io(e))?;
 
         loop {
-            let read_len = match source.read(&mut buffer) {
-                Ok(v) => v,
-                Err(e) => return Err(ErrorKind::Io(e)),
-            };
+            let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
 
-            if let Err(e) = dest.write(&self.decrypt_with_nonce(&buffer[..read_len], &iv)?) {
-                return Err(ErrorKind::Io(e));
-            };
+            dest.write(&self.decrypt_with_nonce(&buffer[..read_len], &iv)?)
+                .map_err(|e| ErrorKind::Io(e))?;
 
             // Stops when the loop reached the end of the file.
             if read_len != BUFFER_LEN {

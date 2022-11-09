@@ -1,1 +1,1 @@
-pub const DEFAULT_BUFFER_LEN: usize = 8192;
+pub const DEFAULT_BUF_LEN: usize = 8192;
