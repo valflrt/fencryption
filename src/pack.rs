@@ -127,7 +127,7 @@ impl Pack {
                 .open(&path)
                 .map_err(|e| ErrorKind::IO(e))?;
 
-            // Converts the default buffer length into u64
+            // Converts the default buffer length into u64.
             let buf_len_u64 = DEFAULT_BUF_LEN
                 .try_into()
                 .map_err(|_| ErrorKind::ConversionError)?;
