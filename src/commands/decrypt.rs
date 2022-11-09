@@ -21,6 +21,7 @@ use fencryption::{crypto::Crypto, walk_dir::WalkDir};
 pub struct Command {
     /// Paths of the encrypted file(s)/directory(ies) to
     /// decrypt
+    #[arg(required = true)]
     paths: Vec<PathBuf>,
 
     /// Set output path (only supported when one input path
@@ -39,6 +40,10 @@ pub struct Command {
 pub fn action(args: &Command) -> ActionResult {
     let mut counter: u128 = 0;
 
+    if args.paths.len() == 0 {
+        return Err(ActionError::new("You must provide at least one path", None));
+    }
+
     if args.output_path.is_some() && args.paths.len() != 1 {
         return Err(ActionError::new(
             "Only one input path can be provided when setting an output path",
@@ -46,15 +51,8 @@ pub fn action(args: &Command) -> ActionResult {
         ));
     };
 
-    let key = match prompt_password(log::format_info("Enter key: ")) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to read key",
-                Some(format!("  - {:?}", e)),
-            ));
-        }
-    };
+    let key = prompt_password(log::format_info("Enter key: "))
+        .map_err(|e| ActionError::new("Failed to read key", Some(format!("  - {:?}", e))))?;
 
     if key.len() < 1 {
         return Err(ActionError::new(
@@ -65,15 +63,8 @@ pub fn action(args: &Command) -> ActionResult {
 
     let timer = time::SystemTime::now();
 
-    let crypto = match Crypto::new(&key.as_bytes()) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to create cipher",
-                Some(format!("  - {:?}", e)),
-            ));
-        }
-    };
+    let crypto = Crypto::new(&key.as_bytes())
+        .map_err(|e| ActionError::new("Failed to create cipher", Some(format!("  - {:?}", e))))?;
 
     // Runs for every provided input path.
     for input_path in &args.paths {
@@ -126,15 +117,9 @@ pub fn action(args: &Command) -> ActionResult {
                 };
             };
 
-            let walk_dir = match WalkDir::new(input_path) {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err(ActionError::new(
-                        "Failed to read directory",
-                        Some(format!("  - {:?}", e)),
-                    ));
-                }
-            };
+            let walk_dir = WalkDir::new(input_path).map_err(|e| {
+                ActionError::new("Failed to read directory", Some(format!("  - {:?}", e)))
+            })?;
 
             let threadpool = ThreadPool::new(8);
 
@@ -142,25 +127,14 @@ pub fn action(args: &Command) -> ActionResult {
             for entry in walk_dir {
                 let crypto = crypto.clone();
 
-                let entry = match entry {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(ActionError::new(
-                            "Failed to read entry",
-                            Some(format!("  - {:?}", e)),
-                        ));
-                    }
-                };
+                let entry = entry.map_err(|e| {
+                    ActionError::new("Failed to read entry", Some(format!("  - {:?}", e)))
+                })?;
                 let entry_path = entry.path();
-                let new_entry_path = output_path.join(match entry_path.strip_prefix(input_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(ActionError::new(
-                            "Couldn't find output path",
-                            Some(format!("  - {:?}", e)),
-                        ));
-                    }
-                });
+                let new_entry_path =
+                    output_path.join(entry_path.strip_prefix(input_path).map_err(|e| {
+                        ActionError::new("Couldn't find output path", Some(format!("  - {:?}", e)))
+                    })?);
 
                 if entry_path.is_dir() {
                     if let Err(e) = fs::create_dir(&new_entry_path) {
@@ -211,29 +185,24 @@ pub fn action(args: &Command) -> ActionResult {
             };
         } else if input_path.is_file() {
             // The case where the entry is a file.
-            let mut source = match OpenOptions::new().read(true).write(true).open(input_path) {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err(ActionError::new(
-                        "Failed to read source file",
-                        Some(format!("  - {:?}", e)),
-                    ));
-                }
-            };
-            let mut dest = match OpenOptions::new()
+            let mut source = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(input_path)
+                .map_err(|e| {
+                    ActionError::new("Failed to read source file", Some(format!("  - {:?}", e)))
+                })?;
+            let mut dest = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .create(true)
                 .open(&output_path)
-            {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err(ActionError::new(
+                .map_err(|e| {
+                    ActionError::new(
                         "Failed to read/create destination file",
                         Some(format!("  - {:?}", e)),
-                    ));
-                }
-            };
+                    )
+                })?;
 
             match crypto.decrypt_stream(&mut source, &mut dest) {
                 Ok(_) => {
