@@ -19,7 +19,7 @@
 
 # Fencryption (Rust)
 
-> This is the new version of [Fencryption (typescript)](https://github.com/valflrt/fencryption) but Rust (Why did I switch language along the way ? Because typescript was not the most suitable language for this kind of project and also because I wanted to try Rust and low-level programming).
+> This is the new version of [Fencryption (typescript)](https://github.com/valflrt/fencryption) but in Rust (Why did I switch language along the way ? Because typescript was not the most suitable language for this kind of project and also because I wanted to try Rust and low-level programming).
 
 Fencryption is program to encrypt and decrypt files and full directories. Note that this project is at an early stage of development.
 
