@@ -1,15 +1,15 @@
 //! This is the lib for the fencryption binary crate.
 //!
 //! Some Interesting structs:
-//! - [Crypto][crate::crypto::Crypto]: Cryptography utility
+//! - [`Crypto`][crate::crypto::Crypto]: Cryptography utility
 //! struct
-//! - [WalkDir][crate::walk_dir::WalkDir]: A struct for walking
+//! - [`WalkDir`][crate::walk_dir::WalkDir]: A struct for walking
 //! through a directory
-//! - [Pack][crate::pack::Pack]: A struct to create/unpack
+//! - [`Pack`][crate::pack::Pack]: A struct to create/unpack
 //! packs
-//! - [FileHeader][crate::file_header::FileHeader]: A struct
+//! - [`FileHeader`][crate::file_header::FileHeader]: A struct
 //! to create/parse file headers
-//! - [TmpDir][crate::tmp_dir::TmpDir]: A struct to manipulate
+//! - [`TmpDir`][crate::tmp_dir::TmpDir]: A struct to manipulate
 //! temporary directories
 
 pub mod constants;

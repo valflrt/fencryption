@@ -105,11 +105,11 @@ impl Crypto {
     }
 
     /// Encrypt a stream from a source and a destination
-    /// (both [std::fs::File]).
+    /// (both [`fs::File`][std::fs::File]).
     ///
     /// Example:
     ///
-    /// (See [TmpDir][crate::tmp_dir::TmpDir])
+    /// (See [`TmpDir`][crate::tmp_dir::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
@@ -160,11 +160,11 @@ impl Crypto {
     }
 
     /// Decrypt a stream from a source and a destination
-    /// (both [std::fs::File]).
+    /// (both [`fs::File`][std::fs::File]).
     ///
     /// Example:
     ///
-    /// (See [TmpDir][crate::tmp_dir::TmpDir])
+    /// (See [`TmpDir`][crate::tmp_dir::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
