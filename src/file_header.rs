@@ -59,24 +59,6 @@ impl FileHeader {
         })
     }
 
-    /// Extracts a file header from an array of 12 bytes.
-    pub fn from_bytes(bytes: &[u8; 12]) -> Result<FileHeader> {
-        let path_len_bytes: [u8; PATH_LEN_LEN] = bytes[..PATH_LEN_LEN]
-            .try_into()
-            .map_err(|_| ErrorKind::ConversionError)?;
-        let file_len_bytes: [u8; FILE_LEN_LEN] = bytes[PATH_LEN_LEN..]
-            .try_into()
-            .map_err(|_| ErrorKind::ConversionError)?;
-
-        Ok(FileHeader {
-            path: None,
-            path_len: u32::from_be_bytes(path_len_bytes)
-                .try_into()
-                .map_err(|_| ErrorKind::ConversionError)?,
-            file_len: u64::from_be_bytes(file_len_bytes),
-        })
-    }
-
     /// Returns the current header as a vector of bytes
     pub fn to_vec(&self) -> Result<Vec<u8>> {
         Ok([
@@ -98,5 +80,27 @@ impl FileHeader {
 
     pub fn file_len_u64(&self) -> u64 {
         self.file_len
+    }
+}
+
+impl TryFrom<&[u8; 12]> for FileHeader {
+    type Error = ErrorKind;
+
+    /// Extracts a file header from an array of 12 bytes.
+    fn try_from(bytes: &[u8; 12]) -> Result<Self, Self::Error> {
+        let path_len_bytes: [u8; PATH_LEN_LEN] = bytes[..PATH_LEN_LEN]
+            .try_into()
+            .map_err(|_| ErrorKind::ConversionError)?;
+        let file_len_bytes: [u8; FILE_LEN_LEN] = bytes[PATH_LEN_LEN..]
+            .try_into()
+            .map_err(|_| ErrorKind::ConversionError)?;
+
+        Ok(FileHeader {
+            path: None,
+            path_len: u32::from_be_bytes(path_len_bytes)
+                .try_into()
+                .map_err(|_| ErrorKind::ConversionError)?,
+            file_len: u64::from_be_bytes(file_len_bytes),
+        })
     }
 }

@@ -28,7 +28,7 @@ type Result<T, E = ErrorKind> = std::result::Result<T, E>;
 /// A pack is a file with all the contents of a directory
 /// inside of it.
 ///
-/// Pack uses [crate::file_header::FileHeader] in order to
+/// Pack uses [FileHeader][crate::file_header::FileHeader] in order to
 /// easily store/separate files inside of it.
 pub struct Pack(PathBuf);
 
@@ -113,7 +113,7 @@ impl Pack {
             };
 
             let header =
-                FileHeader::from_bytes(&header_bytes).map_err(|e| ErrorKind::FileHeader(e))?;
+                FileHeader::try_from(&header_bytes).map_err(|e| ErrorKind::FileHeader(e))?;
 
             let mut path_bytes = vec![
                 0u8;

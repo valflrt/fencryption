@@ -18,12 +18,12 @@ pub enum ErrorKind {
     Io(io::Error),
 }
 
+/// A struct for encrypting/decrypting bytes or io streams.
 #[derive(Clone)]
 pub struct Crypto {
     cipher: Aes256Gcm,
 }
 
-/// A struct for encrypting/decrypting bytes or io streams.
 impl Crypto {
     /// Creates a new Crypto instance, the given key will be
     /// used for every operation performed.
@@ -109,7 +109,7 @@ impl Crypto {
     ///
     /// Example:
     ///
-    /// (See [crate::tmp_dir::TmpDir])
+    /// (See [TmpDir][crate::tmp_dir::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
@@ -164,7 +164,7 @@ impl Crypto {
     ///
     /// Example:
     ///
-    /// (See [crate::tmp_dir::TmpDir])
+    /// (See [TmpDir][crate::tmp_dir::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
