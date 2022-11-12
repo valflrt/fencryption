@@ -1,6 +1,10 @@
 [package]
 name = "fencryption"
+description = "A program to encrypt and decrypt files and full directories"
 authors = ["valflrt"]
+license = "MIT"
+license-file = "LICENSE"
+repository = "https://github.com/valflrt/fencryption-rust"
 version = "0.1.6"
 edition = "2021"
 
