@@ -11,7 +11,7 @@ use crate::actions::{ActionError, ActionResult};
 pub fn pack(input_path: PathBuf, key: String, delete_original: bool) -> ActionResult<Duration> {
     if !input_path.is_dir() {
         return Err(ActionError::new("The path must lead to a directory", None));
-    };
+    }
 
     let timer = time::SystemTime::now();
 

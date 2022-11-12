@@ -47,7 +47,7 @@ pub fn decrypt(
                 "The item pointed by the given path doesn't exist",
                 None,
             ));
-        };
+        }
 
         if output_path.exists() {
             if overwrite {
@@ -72,7 +72,7 @@ pub fn decrypt(
                     None,
                 ));
             }
-        };
+        }
 
         if input_path.is_dir() {
             fs::create_dir(&output_path).ok();
@@ -171,7 +171,7 @@ pub fn decrypt(
             };
         } else {
             skipped_paths.push(input_path);
-        };
+        }
     }
 
     Ok((

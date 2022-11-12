@@ -38,14 +38,14 @@ pub fn execute(args: &Command) -> ActionResult {
 
     if key.ne(&confirm_key) {
         return Err(ActionError::new("The two keys don't match", None));
-    };
+    }
 
     if key.len() < 1 {
         return Err(ActionError::new(
             "The key cannot be less than 1 character long",
             None,
         ));
-    };
+    }
 
     let elapsed = actions::pack(args.path.to_owned(), key, args.delete)?;
 

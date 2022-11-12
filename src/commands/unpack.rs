@@ -42,7 +42,7 @@ pub fn execute(args: &Command) -> ActionResult {
             "The key cannot be less than 1 character long",
             None,
         ));
-    };
+    }
 
     let output_dir_path = PathBuf::from(
         args.path

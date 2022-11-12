@@ -153,7 +153,7 @@ impl Crypto {
             // Stops when the loop reached the end of the file
             if read_len != BUFFER_LEN {
                 break;
-            };
+            }
         }
 
         Ok(())
@@ -218,7 +218,7 @@ impl Crypto {
             // Stops when the loop reached the end of the file.
             if read_len != BUFFER_LEN {
                 break;
-            };
+            }
         }
 
         Ok(())

@@ -40,7 +40,7 @@ pub fn execute(args: &Command) -> ActionResult {
             "Only one input path can be provided when setting an output path",
             None,
         ));
-    };
+    }
 
     let key = prompt_password(log::format_info("Enter key: "))
         .map_err(|e| ActionError::new("Failed to read key", Some(format!("{:#?}", e))))?;
@@ -50,7 +50,7 @@ pub fn execute(args: &Command) -> ActionResult {
             "The key cannot be less than 1 character long",
             None,
         ));
-    };
+    }
 
     let (elapsed, success, skipped, failed) = actions::decrypt(
         args.paths.to_owned(),

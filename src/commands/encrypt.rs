@@ -39,7 +39,7 @@ pub fn execute(args: &Command) -> ActionResult {
             "Only one input path can be provided when setting an output path",
             None,
         ));
-    };
+    }
 
     let key = prompt_password(log::format_info("Enter key: "))
         .map_err(|e| ActionError::new("Failed to read key", Some(format!("{:#?}", e))))?;
@@ -48,14 +48,14 @@ pub fn execute(args: &Command) -> ActionResult {
 
     if key.ne(&confirm_key) {
         return Err(ActionError::new("The two keys don't match", None));
-    };
+    }
 
     if key.len() < 1 {
         return Err(ActionError::new(
             "The key cannot be less than 1 character long",
             None,
         ));
-    };
+    }
 
     let (elapsed, success, skipped, failed) = actions::encrypt(
         args.paths.to_owned(),

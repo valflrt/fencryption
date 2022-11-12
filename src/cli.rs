@@ -7,7 +7,7 @@ pub fn handle_error(error: ActionError) {
     log::println_error(error.message());
     if let Some(d) = error.debug_message() {
         log::println_error(log::with_start_line(d, "    "));
-    };
+    }
     quit::with_code(1);
 }
 

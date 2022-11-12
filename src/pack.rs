@@ -110,7 +110,7 @@ impl Pack {
                 .map_err(|e| ErrorKind::IO(e))?;
             if read_count != header_bytes.len() {
                 break Ok(());
-            };
+            }
 
             let header =
                 FileHeader::try_from(&header_bytes).map_err(|e| ErrorKind::FileHeader(e))?;

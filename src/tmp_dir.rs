@@ -19,7 +19,7 @@ impl TmpDir {
         let path = env::temp_dir().join(uuid::Uuid::new_v4().to_string());
         if let Err(e) = fs::create_dir(&path) {
             return Err(e);
-        };
+        }
         Ok(TmpDir(path))
     }
 
