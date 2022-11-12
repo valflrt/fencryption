@@ -6,26 +6,26 @@ use std::{
 
 use fencryption_lib::{crypto::Crypto, pack::Pack, tmp_dir::TmpDir};
 
-use crate::cli::{CommandError, CommandResult};
+use crate::actions::{ActionError, ActionResult};
 
-pub fn pack(input_path: PathBuf, key: String, delete_original: bool) -> CommandResult<Duration> {
+pub fn pack(input_path: PathBuf, key: String, delete_original: bool) -> ActionResult<Duration> {
     if !input_path.is_dir() {
-        return Err(CommandError::new("The path must lead to a directory", None));
+        return Err(ActionError::new("The path must lead to a directory", None));
     };
 
     let timer = time::SystemTime::now();
 
     let crypto = Crypto::new(&key.as_bytes())
-        .map_err(|e| CommandError::new("Failed to create cipher", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to create cipher", Some(format!("{:#?}", e))))?;
 
     let tmp_dir = TmpDir::new().map_err(|e| {
-        CommandError::new(
+        ActionError::new(
             "Failed to create temporary directory",
             Some(format!("{:#?}", e)),
         )
     })?;
 
-    let tmp_pack_path = tmp_dir.gen_path();
+    let tmp_pack_path = tmp_dir.unique_path();
     let mut pack_path = input_path.to_path_buf();
     pack_path.set_file_name(
         [
@@ -41,11 +41,11 @@ pub fn pack(input_path: PathBuf, key: String, delete_original: bool) -> CommandR
 
     Pack::new(&tmp_pack_path)
         .create(&input_path)
-        .map_err(|e| CommandError::new("Failed to create pack", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to create pack", Some(format!("{:#?}", e))))?;
 
     if delete_original {
         fs::remove_dir_all(&input_path).map_err(|e| {
-            CommandError::new(
+            ActionError::new(
                 "Failed to remove original directory",
                 Some(format!("{:#?}", e)),
             )
@@ -56,14 +56,14 @@ pub fn pack(input_path: PathBuf, key: String, delete_original: bool) -> CommandR
         .read(true)
         .write(true)
         .open(&tmp_pack_path)
-        .map_err(|e| CommandError::new("Failed to read pack file", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to read pack file", Some(format!("{:#?}", e))))?;
     let mut dest = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
         .open(&pack_path)
         .map_err(|e| {
-            CommandError::new(
+            ActionError::new(
                 "Failed to read/create destination file",
                 Some(format!("{:#?}", e)),
             )
@@ -71,7 +71,7 @@ pub fn pack(input_path: PathBuf, key: String, delete_original: bool) -> CommandR
 
     crypto
         .encrypt_stream(&mut source, &mut dest)
-        .map_err(|e| CommandError::new("Failed to encrypt pack", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to encrypt pack", Some(format!("{:#?}", e))))?;
 
     Ok(timer.elapsed().unwrap_or_default())
 }

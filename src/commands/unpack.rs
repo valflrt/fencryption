@@ -4,12 +4,10 @@ use clap::Args;
 use human_duration::human_duration;
 use rpassword::prompt_password;
 
-use crate::cli::{
+use crate::{
+    actions::{self, ActionError, ActionResult},
     log,
-    util::{CommandError, CommandResult},
 };
-
-use super::actions;
 
 #[derive(Args)]
 /// Opens a pack
@@ -28,11 +26,11 @@ pub struct Command {
     debug: bool,
 }
 
-pub fn execute(args: &Command) -> CommandResult {
+pub fn execute(args: &Command) -> ActionResult {
     let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
         Err(e) => {
-            return Err(CommandError::new(
+            return Err(ActionError::new(
                 "Failed to read key",
                 Some(format!("{:#?}", e)),
             ))
@@ -40,7 +38,7 @@ pub fn execute(args: &Command) -> CommandResult {
     };
 
     if key.len() < 1 {
-        return Err(CommandError::new(
+        return Err(ActionError::new(
             "The key cannot be less than 1 character long",
             None,
         ));
@@ -49,7 +47,7 @@ pub fn execute(args: &Command) -> CommandResult {
     let output_dir_path = PathBuf::from(
         args.path
             .file_stem()
-            .ok_or(CommandError::new("Failed to get output path", None))?,
+            .ok_or(ActionError::new("Failed to get output path", None))?,
     );
 
     let elapsed = actions::unpack(
@@ -65,7 +63,7 @@ pub fn execute(args: &Command) -> CommandResult {
     let out = log::prompt(
         "Do you want to update the pack ('u') or exit and discard changes ('q') [u/q] ",
     )
-    .map_err(|e| CommandError::new("Failed to read input", Some(format!("{:#?}", e))))?;
+    .map_err(|e| ActionError::new("Failed to read input", Some(format!("{:#?}", e))))?;
 
     if out == "u" {
         let elapsed = actions::pack(output_dir_path, key, true)?;

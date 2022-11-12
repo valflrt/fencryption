@@ -4,12 +4,10 @@ use clap::{arg, Args};
 use human_duration::human_duration;
 use rpassword::prompt_password;
 
-use crate::cli::{
+use crate::{
+    actions::{self, ActionError, ActionResult},
     log,
-    util::{CommandError, CommandResult},
 };
-
-use super::actions;
 
 #[derive(Args, Clone)]
 /// Encrypt specified file/directory using the passed key
@@ -32,26 +30,23 @@ pub struct Command {
     debug: bool,
 }
 
-pub fn execute(args: &Command) -> CommandResult {
+pub fn execute(args: &Command) -> ActionResult {
     if args.paths.len() == 0 {
-        return Err(CommandError::new(
-            "You must provide at least one path",
-            None,
-        ));
+        return Err(ActionError::new("You must provide at least one path", None));
     }
 
     if args.output_path.is_some() && args.paths.len() != 1 {
-        return Err(CommandError::new(
+        return Err(ActionError::new(
             "Only one input path can be provided when setting an output path",
             None,
         ));
     };
 
     let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| CommandError::new("Failed to read key", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to read key", Some(format!("{:#?}", e))))?;
 
     if key.len() < 1 {
-        return Err(CommandError::new(
+        return Err(ActionError::new(
             "The key cannot be less than 1 character long",
             None,
         ));

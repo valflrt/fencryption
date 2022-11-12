@@ -9,21 +9,21 @@ use threadpool::ThreadPool;
 
 use fencryption_lib::{crypto::Crypto, walk_dir::WalkDir};
 
-use crate::cli::{CommandError, CommandResult};
+use crate::actions::{ActionError, ActionResult};
 
-pub fn decrypt(
+pub fn encrypt(
     input_paths: Vec<PathBuf>,
     output_path: Option<PathBuf>,
     key: String,
     overwrite: bool,
-) -> CommandResult<(Duration, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)> {
+) -> ActionResult<(Duration, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)> {
     let mut success_paths: Vec<PathBuf> = Vec::new();
     let mut skipped_paths: Vec<PathBuf> = Vec::new();
     let mut failed_paths: Vec<PathBuf> = Vec::new();
     let timer = time::SystemTime::now();
 
     let crypto = Crypto::new(&key.as_bytes())
-        .map_err(|e| CommandError::new("Failed to create cipher", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to create cipher", Some(format!("{:#?}", e))))?;
 
     // Runs for every provided input path.
     for input_path in input_paths {
@@ -37,7 +37,7 @@ pub fn decrypt(
                             .unwrap_or_default()
                             .to_str()
                             .unwrap_or_default(),
-                        ".dec",
+                        ".enc",
                     ]
                     .concat(),
                 );
@@ -45,46 +45,59 @@ pub fn decrypt(
             }
         };
 
-        if input_path.exists() == false {
-            return Err(CommandError::new(
+        if !input_path.exists() {
+            return Err(ActionError::new(
                 "The item pointed by the given path doesn't exist",
                 None,
             ));
         };
 
-        if output_path.exists() == true && overwrite == false {
-            return Err(CommandError::new(
-                "The output file/directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)",
-                None,
-            ));
+        if output_path.exists() {
+            if overwrite {
+                if output_path.is_dir() {
+                    fs::remove_dir_all(&output_path).map_err(|e| {
+                        ActionError::new(
+                            "Failed to overwrite output directory",
+                            Some(format!("{:#?}", e)),
+                        )
+                    })?;
+                } else if output_path.is_file() {
+                    fs::remove_file(&output_path).map_err(|e| {
+                        ActionError::new(
+                            "Failed to overwrite output file",
+                            Some(format!("{:#?}", e)),
+                        )
+                    })?;
+                }
+            } else {
+                return Err(ActionError::new(
+                    "The output file/directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)",
+                    None,
+                ));
+            }
         };
 
         if input_path.is_dir() {
-            // The case where the entry is a directory.
-
-            // Creates base directory to put encrypted files
-            // in.
             fs::create_dir(&output_path).ok();
 
             let walk_dir = WalkDir::new(&input_path).iter().map_err(|e| {
-                CommandError::new("Failed to read directory", Some(format!("{:#?}", e)))
+                ActionError::new("Failed to read directory", Some(format!("{:#?}", e)))
             })?;
 
             let threadpool = ThreadPool::new(8);
             let (tx, rx) = channel();
             let mut tries_nb = 0;
 
-            // Runs for every entry in the specified directory.
             for entry in walk_dir {
                 let crypto = crypto.clone();
 
                 let entry = entry.map_err(|e| {
-                    CommandError::new("Failed to read entry", Some(format!("{:#?}", e)))
+                    ActionError::new("Failed to read entry", Some(format!("{:#?}", e)))
                 })?;
                 let entry_path = entry.path();
                 let new_entry_path =
                     output_path.join(entry_path.strip_prefix(&input_path).map_err(|e| {
-                        CommandError::new("Couldn't find output path", Some(format!("{:#?}", e)))
+                        ActionError::new("Couldn't find output path", Some(format!("{:#?}", e)))
                     })?);
 
                 if entry_path.is_dir() {
@@ -115,7 +128,7 @@ pub fn decrypt(
                             }
                         };
 
-                        if let Err(_) = crypto.decrypt_stream(&mut source, &mut dest) {
+                        if let Err(_) = crypto.encrypt_stream(&mut source, &mut dest) {
                             tx.send((entry_path, false)).unwrap();
                             return;
                         }
@@ -136,13 +149,12 @@ pub fn decrypt(
                 }
             })
         } else if input_path.is_file() {
-            // The case where the entry is a file.
             let mut source = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .open(&input_path)
                 .map_err(|e| {
-                    CommandError::new("Failed to read source file", Some(format!("{:#?}", e)))
+                    ActionError::new("Failed to read source file", Some(format!("{:#?}", e)))
                 })?;
             let mut dest = OpenOptions::new()
                 .read(true)
@@ -150,13 +162,13 @@ pub fn decrypt(
                 .create(true)
                 .open(&output_path)
                 .map_err(|e| {
-                    CommandError::new(
+                    ActionError::new(
                         "Failed to read/create destination file",
                         Some(format!("{:#?}", e)),
                     )
                 })?;
 
-            match crypto.decrypt_stream(&mut source, &mut dest) {
+            match crypto.encrypt_stream(&mut source, &mut dest) {
                 Ok(_) => success_paths.push(input_path.to_owned()),
                 Err(_) => failed_paths.push(input_path.to_owned()),
             };

@@ -23,17 +23,17 @@ impl TmpDir {
         Ok(TmpDir(path))
     }
 
-    pub fn path(&self) -> PathBuf {
-        self.0.to_owned()
+    pub fn path(&self) -> &PathBuf {
+        &self.0
     }
 
     /// Generates a new unique path in the temporary directory.
-    pub fn gen_path(&self) -> PathBuf {
+    pub fn unique_path(&self) -> PathBuf {
         self.0.join(uuid::Uuid::new_v4().to_string())
     }
 
     /// Writes to a file (or create it if it doesn't exist)
-    /// in the TmpDir. See [std::fs::write].
+    /// in the temporary directory. See [`fs::write`].
     pub fn write_file<P, C>(&self, path: P, contents: C) -> io::Result<()>
     where
         P: AsRef<Path>,
@@ -42,7 +42,7 @@ impl TmpDir {
         fs::write(self.path().join(path), contents)
     }
 
-    /// Reads a file from the TmpDir. See [std::fs::read].
+    /// Reads a file in the temporary directory. See [`fs::read`].
     pub fn read_file<P>(&self, path: P) -> io::Result<Vec<u8>>
     where
         P: AsRef<Path>,
@@ -50,7 +50,8 @@ impl TmpDir {
         fs::read(self.path().join(path))
     }
 
-    /// Creates a directory. See [std::fs::create_dir].
+    /// Creates a directory inside the temporary directory.
+    /// See [`fs::create_dir`].
     pub fn create_dir<P>(&self, path: P) -> io::Result<()>
     where
         P: AsRef<Path>,
@@ -59,7 +60,8 @@ impl TmpDir {
     }
 
     /// Creates a directory and all of its parent if they are
-    /// missing. See [std::fs::create_dir_all].
+    /// missing (inside the temporary directory). See
+    /// [`fs::create_dir_all`].
     pub fn create_dir_all<P>(&self, path: P) -> io::Result<()>
     where
         P: AsRef<Path>,
@@ -67,7 +69,8 @@ impl TmpDir {
         fs::create_dir_all(self.path().join(path))
     }
 
-    /// Creates a file in the TmpDir. See [std::fs::File::create].
+    /// Creates a file in the temporary directory. See
+    /// [`File::create`].
     pub fn create_file<P>(&self, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
@@ -75,7 +78,8 @@ impl TmpDir {
         File::create(self.path().join(path))
     }
 
-    /// Opens a file from the TmpDir. See [std::fs::File::open].
+    /// Opens a file in the temporary directory. See
+    /// [`File::open`].
     pub fn open_file<P>(&self, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
@@ -83,13 +87,30 @@ impl TmpDir {
         File::open(self.path().join(path))
     }
 
-    /// Opens a file from the TmpDir using the provided
-    /// OpenOptions. See [std::fs::OpenOptions::open].
+    /// Opens a file in the temporary directory using the
+    /// provided OpenOptions. See [`fs::OpenOptions::open`].
     pub fn open_file_with_opts<P>(&self, opts: OpenOptions, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
     {
         opts.open(self.path().join(path))
+    }
+
+    /// Gets metadata for the given path. Akin to [`fs::metadata`].
+    pub fn metadata<P>(&self, path: P) -> io::Result<fs::Metadata>
+    where
+        P: AsRef<Path>,
+    {
+        self.path().join(path.as_ref()).metadata()
+    }
+
+    /// Checks if a path exists in the current directory. Akin
+    /// to [`Path::exists`].
+    pub fn exists<P>(&self, path: P) -> bool
+    where
+        P: AsRef<Path>,
+    {
+        self.path().join(path.as_ref()).exists()
     }
 }
 

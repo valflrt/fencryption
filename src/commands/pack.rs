@@ -4,12 +4,10 @@ use clap::Args;
 use human_duration::human_duration;
 use rpassword::{self, prompt_password};
 
-use crate::cli::{
+use crate::{
+    actions::{self, ActionError, ActionResult},
     log,
-    util::{CommandError, CommandResult},
 };
-
-use super::actions;
 
 #[derive(Args)]
 /// Packs a directory
@@ -32,18 +30,18 @@ pub struct Command {
     debug: bool,
 }
 
-pub fn execute(args: &Command) -> CommandResult {
+pub fn execute(args: &Command) -> ActionResult {
     let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| CommandError::new("Failed to read key", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to read key", Some(format!("{:#?}", e))))?;
     let confirm_key = prompt_password(log::format_info("Confirm key: "))
-        .map_err(|e| CommandError::new("Failed to read confirm key", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new("Failed to read confirm key", Some(format!("{:#?}", e))))?;
 
     if key.ne(&confirm_key) {
-        return Err(CommandError::new("The two keys don't match", None));
+        return Err(ActionError::new("The two keys don't match", None));
     };
 
     if key.len() < 1 {
-        return Err(CommandError::new(
+        return Err(ActionError::new(
             "The key cannot be less than 1 character long",
             None,
         ));

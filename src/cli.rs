@@ -1,11 +1,15 @@
-pub mod log;
-pub mod util;
-
 use clap::{command, Parser};
 
-use crate::{cli::util::handle_error, commands};
+use crate::{actions::ActionError, commands, log};
 
-pub use crate::cli::util::*;
+/// Handles command action error
+pub fn handle_error(error: ActionError) {
+    log::println_error(error.message());
+    if let Some(d) = error.debug_message() {
+        log::println_error(log::with_start_line(d, "    "));
+    };
+    quit::with_code(1);
+}
 
 #[derive(Parser)]
 #[command(name = "fencryption", version)]
