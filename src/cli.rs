@@ -3,9 +3,9 @@ pub mod util;
 
 use clap::{command, Parser};
 
-use crate::commands;
+use crate::{cli::util::handle_error, commands};
 
-use self::util::{handle_error, handle_success};
+pub use crate::cli::util::*;
 
 #[derive(Parser)]
 #[command(name = "fencryption", version)]
@@ -21,21 +21,25 @@ struct Cli {
 
 pub fn parse() {
     match &Cli::parse().command {
-        commands::CommandEnum::Encrypt(args) => match commands::encrypt::action(args) {
-            Ok(m) => handle_success(m),
-            Err(e) => handle_error(e),
-        },
-        commands::CommandEnum::Decrypt(args) => match commands::decrypt::action(args) {
-            Ok(m) => handle_success(m),
-            Err(e) => handle_error(e),
-        },
-        commands::CommandEnum::Pack(args) => match commands::pack::action(args) {
-            Ok(m) => handle_success(m),
-            Err(e) => handle_error(e),
-        },
-        commands::CommandEnum::Unpack(args) => match commands::unpack::action(args) {
-            Ok(m) => handle_success(m),
-            Err(e) => handle_error(e),
-        },
+        commands::CommandEnum::Encrypt(args) => {
+            if let Err(e) = commands::encrypt::execute(args) {
+                handle_error(e);
+            }
+        }
+        commands::CommandEnum::Decrypt(args) => {
+            if let Err(e) = commands::decrypt::execute(args) {
+                handle_error(e);
+            }
+        }
+        commands::CommandEnum::Pack(args) => {
+            if let Err(e) = commands::pack::execute(args) {
+                handle_error(e);
+            }
+        }
+        commands::CommandEnum::Unpack(args) => {
+            if let Err(e) = commands::unpack::execute(args) {
+                handle_error(e);
+            }
+        }
     }
 }

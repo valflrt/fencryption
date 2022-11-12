@@ -1,3 +1,5 @@
+use std::io::{self, stdin, stdout, Write};
+
 use colored::Colorize;
 
 enum LogKind {
@@ -6,21 +8,32 @@ enum LogKind {
     Error,
 }
 
+/// Adds a "start line pattern" at the start of every line in
+/// the given text.
+pub fn with_start_line<T, L>(text: T, line_start: L) -> String
+where
+    T: AsRef<str>,
+    L: AsRef<str>,
+{
+    format!(
+        "{} {}",
+        line_start.as_ref(),
+        text.as_ref()
+            .replace("\n", &["\n", line_start.as_ref(), " "].concat())
+    )
+}
+
 fn format_message<M>(message: M, kind: LogKind) -> String
 where
     M: AsRef<str>,
 {
-    let message = message.as_ref();
     let line_start = match kind {
         LogKind::Info => " ".black().on_white(),
         LogKind::Success => " ".black().on_bright_green(),
         LogKind::Error => " ".black().on_bright_red(),
-    };
-    format!(
-        "{} {}",
-        line_start,
-        message.replace("\n", &["\n", &line_start, " "].concat())
-    )
+    }
+    .to_string();
+    with_start_line(message, line_start)
 }
 
 pub fn format_info<M>(message: M) -> String
@@ -63,4 +76,15 @@ where
     M: AsRef<str>,
 {
     println!("{}", format_error(message))
+}
+
+pub fn prompt<M>(message: M) -> io::Result<String>
+where
+    M: AsRef<str>,
+{
+    print!("{}", format_info(message));
+    stdout().flush()?;
+    let mut out = String::new();
+    stdin().read_line(&mut out)?;
+    Ok(out)
 }

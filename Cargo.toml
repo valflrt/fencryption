@@ -4,11 +4,14 @@ authors = ["valflrt"]
 version = "0.1.6"
 edition = "2021"
 
+[lib]
+name = "fencryption_lib"
+path = "src/lib.rs"
+
 [dependencies]
 aes-gcm = "0.10.1"
 clap = { version = "4.0.18", features = ["derive"] }
 colored = "2.0.0"
-console = "0.15.2"
 human-duration = "0.1.0"
 quit = "1.1.4"
 rand = "0.8.5"

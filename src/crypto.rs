@@ -57,7 +57,7 @@ impl Crypto {
     /// Example:
     ///
     /// ```
-    /// use fencryption::crypto::Crypto;
+    /// use fencryption_lib::crypto::Crypto;
     ///
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
@@ -81,7 +81,7 @@ impl Crypto {
     /// Example:
     ///
     /// ```
-    /// use fencryption::crypto::Crypto;
+    /// use fencryption_lib::crypto::Crypto;
     ///
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
@@ -109,8 +109,8 @@ impl Crypto {
     /// Example:
     ///
     /// ```rust
-    /// use fencryption::crypto::Crypto;
-    /// use fencryption::tmp_dir::TmpDir;
+    /// use fencryption_lib::crypto::Crypto;
+    /// use fencryption_lib::tmp_dir::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
@@ -162,8 +162,8 @@ impl Crypto {
     /// Example:
     ///
     /// ```rust
-    /// use fencryption::crypto::Crypto;
-    /// use fencryption::tmp_dir::TmpDir;
+    /// use fencryption_lib::crypto::Crypto;
+    /// use fencryption_lib::tmp_dir::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";

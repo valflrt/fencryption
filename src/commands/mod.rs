@@ -1,5 +1,10 @@
 use clap::Subcommand;
 
+pub mod actions;
+
+// TODO Add some more checks in commands to avoid unexpected
+// errors
+
 pub mod decrypt;
 pub mod encrypt;
 pub mod pack;

@@ -1,9 +1,4 @@
-use std::{
-    fs::{self, OpenOptions},
-    io,
-    path::PathBuf,
-    time,
-};
+use std::path::PathBuf;
 
 use clap::Args;
 use human_duration::human_duration;
@@ -11,13 +6,16 @@ use rpassword::prompt_password;
 
 use crate::cli::{
     log,
-    util::{ActionError, ActionResult},
+    util::{CommandError, CommandResult},
 };
-use fencryption::{crypto::Crypto, pack::Pack, tmp_dir::TmpDir};
+
+use super::actions;
 
 #[derive(Args)]
-/// Opens a pack: creates a directory where the decrypted
-/// files appear. To close the pack see command "close".
+/// Opens a pack
+///
+/// Creates a directory where the decrypted files appear. To
+/// close the pack see command "close".
 pub struct Command {
     /// Path of the pack to open
     path: PathBuf,
@@ -30,263 +28,57 @@ pub struct Command {
     debug: bool,
 }
 
-pub fn action(args: &Command) -> ActionResult {
+pub fn execute(args: &Command) -> CommandResult {
     let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
         Err(e) => {
-            return Err(ActionError::new(
+            return Err(CommandError::new(
                 "Failed to read key",
-                Some(format!("  - {:?}", e)),
+                Some(format!("{:#?}", e)),
             ))
         }
     };
 
     if key.len() < 1 {
-        return Err(ActionError::new(
+        return Err(CommandError::new(
             "The key cannot be less than 1 character long",
             None,
         ));
     };
 
-    let timer = time::SystemTime::now();
+    let output_dir_path = PathBuf::from(
+        args.path
+            .file_stem()
+            .ok_or(CommandError::new("Failed to get output path", None))?,
+    );
 
-    let crypto = match Crypto::new(&key.as_bytes()) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to create cipher",
-                if args.debug == true {
-                    Some(format!("  - {:?}", e))
-                } else {
-                    None
-                },
-            ));
-        }
-    };
-
-    let tmp_dir = match TmpDir::new() {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to create temporary directory",
-                if args.debug == true {
-                    Some(format!("  - {:?}", e))
-                } else {
-                    None
-                },
-            ));
-        }
-    };
-
-    let tmp_pack_path = tmp_dir.gen_path();
-
-    let mut source = match OpenOptions::new().read(true).write(true).open(&args.path) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to read pack file",
-                if args.debug == true {
-                    Some(format!("  - {:?}", e))
-                } else {
-                    None
-                },
-            ));
-        }
-    };
-    let mut dest = match OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(&tmp_pack_path)
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to read/create temporary decrypted pack file",
-                if args.debug == true {
-                    Some(format!("  - {:?}", e))
-                } else {
-                    None
-                },
-            ));
-        }
-    };
-
-    match crypto.decrypt_stream(&mut source, &mut dest) {
-        Ok(_) => {
-            log::println_success("Encrypted pack");
-        }
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to decrypt pack",
-                if args.debug == true {
-                    Some(format!("  - {:?}", e))
-                } else {
-                    None
-                },
-            ));
-        }
-    };
-
-    let dir_path = PathBuf::from(match args.path.file_stem() {
-        Some(v) => v,
-        None => {
-            return Err(ActionError::new("Failed to get output path", None));
-        }
-    });
-
-    match Pack::new(&tmp_pack_path).unpack(&dir_path) {
-        Ok(_) => {
-            log::println_success("Unpacked pack");
-        }
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to unpack pack",
-                if args.debug == true {
-                    Some(format!("  - {:?}", e))
-                } else {
-                    None
-                },
-            ));
-        }
-    };
-
-    log::println_success(format!(
-        "Decrypted pack in {}",
-        human_duration(&timer.elapsed().unwrap_or_default())
-    ));
+    let elapsed = actions::unpack(
+        args.path.to_owned(),
+        output_dir_path.to_owned(),
+        key.to_owned(),
+    )?;
 
     if args.permanent {
-        return Ok(None);
+        return Ok(());
     }
 
-    log::println_info("Press 'u' to update the pack and 'q' other key to discard changes");
+    let out = log::prompt(
+        "Do you want to update the pack ('u') or exit and discard changes ('q') [u/q] ",
+    )
+    .map_err(|e| CommandError::new("Failed to read input", Some(format!("{:#?}", e))))?;
 
-    let stdout = console::Term::buffered_stdout();
-    loop {
-        if let Ok(c) = stdout.read_char() {
-            match c {
-                'u' => {
-                    if let Err(e) = fs::remove_file(&args.path) {
-                        return Err(ActionError::new(
-                            "Failed to remove outdated pack",
-                            if args.debug == true {
-                                Some(format!("  - {:?}", e))
-                            } else {
-                                None
-                            },
-                        ));
-                    };
-
-                    let tmp_dir = match TmpDir::new() {
-                        Ok(v) => v,
-                        Err(e) => {
-                            return Err(ActionError::new(
-                                "Failed to create temporary directory",
-                                if args.debug == true {
-                                    Some(format!("  - {:?}", e))
-                                } else {
-                                    None
-                                },
-                            ));
-                        }
-                    };
-                    let tmp_pack_path = tmp_dir.gen_path();
-
-                    if let Err(e) = Pack::new(&tmp_pack_path).create(&dir_path) {
-                        return Err(ActionError::new(
-                            "Failed to update pack",
-                            if args.debug == true {
-                                Some(format!("  - {:?}", e))
-                            } else {
-                                None
-                            },
-                        ));
-                    };
-
-                    if let Err(e) = fs::remove_dir_all(&dir_path) {
-                        return Err(ActionError::new(
-                            "Failed to remove original directory",
-                            if args.debug == true {
-                                Some(format!("  - {:?}", e))
-                            } else {
-                                None
-                            },
-                        ));
-                    };
-
-                    let mut source = match OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .open(&tmp_pack_path)
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            return Err(ActionError::new(
-                                "Failed to read pack file",
-                                if args.debug == true {
-                                    Some(format!("  - {:?}", e))
-                                } else {
-                                    None
-                                },
-                            ));
-                        }
-                    };
-                    let mut dest = match OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .create(true)
-                        .open(&args.path)
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            return Err(ActionError::new(
-                                "Failed to update pack file",
-                                if args.debug == true {
-                                    Some(format!("  - {:?}", e))
-                                } else {
-                                    None
-                                },
-                            ));
-                        }
-                    };
-
-                    if let Err(e) = crypto.encrypt_stream(&mut source, &mut dest) {
-                        return Err(ActionError::new(
-                            "Failed to encrypt updated pack",
-                            if args.debug == true {
-                                Some(format!("  - {:?}", e))
-                            } else {
-                                None
-                            },
-                        ));
-                    };
-
-                    log::println_success("Updated pack");
-
-                    break;
-                }
-                'q' => break,
-                _ => continue,
-            }
-        }
+    if out == "u" {
+        let elapsed = actions::pack(output_dir_path, key, true)?;
+        log::println_success(format!(
+            "Updated pack ({} elapsed)",
+            human_duration(&elapsed)
+        ));
+    } else {
+        log::println_info(format!(
+            "Exited without saving changes ({} elapsed)",
+            human_duration(&elapsed)
+        ));
     }
 
-    if let Err(e) = fs::remove_dir_all(&dir_path) {
-        match e.kind() {
-            io::ErrorKind::NotFound => (),
-            e => {
-                return Err(ActionError::new(
-                    "Failed to remove original directory",
-                    if args.debug == true {
-                        Some(format!("  - {:?}", e))
-                    } else {
-                        None
-                    },
-                ));
-            }
-        };
-    };
-
-    Ok(None)
+    Ok(())
 }
