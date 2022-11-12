@@ -7,11 +7,11 @@ use std::{
 
 /// TmpDir is a struct to manipulate a temporary directory.
 ///
-/// The path argument in method that have it must be relative
+/// The "path" argument (in some methods) must be relative
 /// because it will be joined to the temporary directory path.
 ///
-/// When this struct is dropped, the temporary directory is
-/// automatically deleted.
+/// When this struct is dropped, the temporary directory
+/// itself is automatically deleted.
 pub struct TmpDir(PathBuf);
 
 impl TmpDir {

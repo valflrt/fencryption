@@ -23,6 +23,7 @@ pub struct Crypto {
     cipher: Aes256Gcm,
 }
 
+/// A struct for encrypting/decrypting bytes or io streams.
 impl Crypto {
     /// Creates a new Crypto instance, the given key will be
     /// used for every operation performed.
@@ -108,6 +109,8 @@ impl Crypto {
     ///
     /// Example:
     ///
+    /// (See [crate::tmp_dir::TmpDir])
+    ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
     /// use fencryption_lib::tmp_dir::TmpDir;
@@ -160,6 +163,8 @@ impl Crypto {
     /// (both [std::fs::File]).
     ///
     /// Example:
+    ///
+    /// (See [crate::tmp_dir::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;

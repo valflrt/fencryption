@@ -23,8 +23,13 @@ pub enum ErrorKind {
 
 type Result<T, E = ErrorKind> = std::result::Result<T, E>;
 
-/// Pack is used to pack files and their paths in a single
-/// file.
+/// A struct to manipulate (create/unpack) packs.
+///
+/// A pack is a file with all the contents of a directory
+/// inside of it.
+///
+/// Pack uses [crate::file_header::FileHeader] in order to
+/// easily store/separate files inside of it.
 pub struct Pack(PathBuf);
 
 impl Pack {
@@ -47,7 +52,9 @@ impl Pack {
             .open(&self.0)
             .map_err(|e| ErrorKind::IO(e))?;
 
-        let walk_dir = WalkDir::new(&dir_path).map_err(|e| ErrorKind::WalkDir(e))?;
+        let walk_dir = WalkDir::new(&dir_path)
+            .iter()
+            .map_err(|e| ErrorKind::WalkDir(e))?;
 
         for entry in walk_dir {
             let entry = entry.map_err(|e| ErrorKind::WalkDir(e))?;

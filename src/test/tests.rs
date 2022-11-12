@@ -85,9 +85,13 @@ fn walk_directory_and_encounter_every_file_in_it() {
     tmp_dir.write_file("c/b", &[]).unwrap();
     tmp_dir.write_file("d", &[]).unwrap();
 
-    let walk_dir = WalkDir::new(tmp_dir.path()).unwrap();
+    let walk_dir = WalkDir::new(tmp_dir.path());
 
-    let entries: Vec<PathBuf> = walk_dir.map(|e| e.unwrap().path()).collect();
+    let entries: Vec<PathBuf> = walk_dir
+        .iter()
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
 
     assert!(entries
         .iter()

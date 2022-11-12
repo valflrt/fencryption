@@ -66,7 +66,7 @@ pub fn encrypt(
             // in.
             fs::create_dir(&output_path).ok();
 
-            let walk_dir = WalkDir::new(&input_path).map_err(|e| {
+            let walk_dir = WalkDir::new(&input_path).iter().map_err(|e| {
                 CommandError::new("Failed to read directory", Some(format!("{:#?}", e)))
             })?;
 

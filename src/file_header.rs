@@ -16,7 +16,7 @@ pub const PATH_LEN_LEN: usize = 32 / 8; // 4 bytes
 pub const FILE_LEN_LEN: usize = 64 / 8; // 8 bytes
 pub const HEADER_LEN: usize = PATH_LEN_LEN + FILE_LEN_LEN; // 12 bytes
 
-/// Manage pack file headers.
+/// Manipulate (create/parse) file headers.
 ///
 /// A pack file header is made up of 12 bytes:
 /// - 4 bytes representing the length of the associated path

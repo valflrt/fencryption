@@ -1,7 +1,7 @@
 use std::{
     fs::{self, DirEntry, ReadDir},
     io,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 #[derive(Debug)]
@@ -11,19 +11,27 @@ pub enum ErrorKind {
 
 pub type Result<T, E = ErrorKind> = std::result::Result<T, E>;
 
-pub struct WalkDir {
-    levels: Vec<ReadDir>,
-}
+/// A struct for walking through a directory.
+pub struct WalkDir(PathBuf);
 
 impl WalkDir {
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<WalkDir> {
+    pub fn new<P: AsRef<Path>>(path: P) -> WalkDir {
+        WalkDir(path.as_ref().to_path_buf())
+    }
+
+    pub fn iter(&self) -> Result<WalkDirIterator> {
         let mut levels = Vec::new();
-        levels.push(fs::read_dir(path).map_err(|e| ErrorKind::IOError(e))?);
-        Ok(WalkDir { levels })
+        levels.push(fs::read_dir(&self.0).map_err(|e| ErrorKind::IOError(e))?);
+        Ok(WalkDirIterator { levels })
     }
 }
 
-impl Iterator for WalkDir {
+/// The Iterator for WalkDir
+pub struct WalkDirIterator {
+    levels: Vec<ReadDir>,
+}
+
+impl Iterator for WalkDirIterator {
     type Item = Result<DirEntry>;
 
     fn next(&mut self) -> Option<Self::Item> {
