@@ -131,13 +131,8 @@ pub fn encrypt(
                         }
                         .as_bytes();
 
-                        if let Err(_) = dest.write_all(&match u32::try_from(path_as_bytes.len()) {
-                            Ok(v) => v.to_be_bytes(),
-                            Err(_) => {
-                                tx.send((entry_path, false)).unwrap();
-                                return;
-                            }
-                        }) {
+                        if let Err(_) = dest.write_all(&(path_as_bytes.len() as u32).to_be_bytes())
+                        {
                             tx.send((entry_path, false)).unwrap();
                             return;
                         };
