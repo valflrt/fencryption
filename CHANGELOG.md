@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.7
+
+- Add packing features
+  - Command `pack` and `unpack`
+- Commands `encrypt` now gathers all encrypted files in the same directory
+  - File names of encrypted files are now uuids
+- Key is no more asked as an argument (so it is now saved in history)
+- Better log
+
 ## `v0.1.6`
 
 - Add multithreading for directory encryption (speed goes brrr)
