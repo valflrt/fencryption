@@ -1,5 +1,6 @@
 use std::{
     fs::{self, OpenOptions},
+    io::Write,
     path::PathBuf,
     sync::mpsc::channel,
     time::{self, Duration},
@@ -7,7 +8,8 @@ use std::{
 
 use threadpool::ThreadPool;
 
-use fencryption_lib::{crypto::Crypto, walk_dir::WalkDir};
+use fencryption_lib::{crypto::Crypto, stream::stream, tmp::TmpFile, walk_dir::WalkDir};
+use uuid::Uuid;
 
 use crate::actions::{ActionError, ActionResult};
 
@@ -80,28 +82,84 @@ pub fn encrypt(
                 let entry =
                     entry.map_err(|e| ActionError::new_with_error("Failed to read entry", e))?;
                 let entry_path = entry.path();
-                let new_entry_path =
-                    output_path.join(entry_path.strip_prefix(&input_path).map_err(|e| {
-                        ActionError::new_with_error("Couldn't find output path", e)
-                    })?);
+                let new_entry_path = output_path.join(Uuid::new_v4().to_string());
 
-                if entry_path.is_dir() {
-                    fs::create_dir(&new_entry_path).ok();
-                } else if entry_path.is_file() {
+                if entry_path.is_file() {
                     tries_nb += 1;
                     let tx = tx.clone();
+                    let input_path = input_path.clone();
                     let entry_path = entry_path.clone();
                     threadpool.execute(move || {
-                        let mut source =
-                            match OpenOptions::new().read(true).write(true).open(&entry_path) {
-                                Ok(v) => v,
-                                Err(_) => {
-                                    tx.send((entry_path, false)).unwrap();
-                                    return;
-                                }
-                            };
+                        let tmp_file = match TmpFile::new() {
+                            Ok(v) => v,
+                            Err(_) => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        };
+
+                        let mut source = match OpenOptions::new().read(true).open(&entry_path) {
+                            Ok(v) => v,
+                            Err(_) => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        };
+                        let mut dest = match tmp_file.open_with_opts(OpenOptions::new().write(true))
+                        {
+                            Ok(v) => v,
+                            Err(_) => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        };
+
+                        let entry_path = match entry_path.strip_prefix(input_path) {
+                            Ok(v) => v.to_path_buf(),
+                            Err(_) => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        };
+
+                        let path_as_bytes = match entry_path.to_str() {
+                            Some(v) => v,
+                            None => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        }
+                        .as_bytes();
+
+                        if let Err(_) = dest.write_all(&match u32::try_from(path_as_bytes.len()) {
+                            Ok(v) => v.to_be_bytes(),
+                            Err(_) => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        }) {
+                            tx.send((entry_path, false)).unwrap();
+                            return;
+                        };
+
+                        if let Err(_) = dest.write_all(path_as_bytes) {
+                            tx.send((entry_path, false)).unwrap();
+                            return;
+                        };
+
+                        if let Err(_) = stream(&mut source, &mut dest) {
+                            tx.send((entry_path, false)).unwrap();
+                            return;
+                        }
+
+                        let mut source = match tmp_file.open() {
+                            Ok(v) => v,
+                            Err(_) => {
+                                tx.send((entry_path, false)).unwrap();
+                                return;
+                            }
+                        };
                         let mut dest = match OpenOptions::new()
-                            .read(true)
                             .write(true)
                             .create(true)
                             .open(&new_entry_path)
@@ -120,7 +178,7 @@ pub fn encrypt(
 
                         tx.send((entry_path, true)).unwrap();
                     });
-                } else {
+                } else if !entry_path.is_dir() {
                     skipped_paths.push(entry_path.to_owned());
                 }
             }

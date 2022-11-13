@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{crypto::Crypto, tmp_dir::TmpDir, walk_dir::WalkDir};
+use crate::{crypto::Crypto, tmp::TmpDir, walk_dir::WalkDir};
 
 // Crypto tests
 

@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Args)]
-/// Opens a pack
+/// Open a pack
 ///
 /// Creates a directory where the decrypted files appear. To
 /// close the pack see command "close".
@@ -55,9 +55,10 @@ pub fn execute(args: &Command) -> ActionResult {
     }
 
     let out = log::prompt(
-        "Do you want to update the pack ('u') or exit and discard changes ('q') [u/q] ",
+        "Do you want to update the pack ('u') or exit and discard changes ('q') [u/Q] ",
     )
     .map_err(|e| ActionError::new_with_error("Failed to read input", e))?;
+    let out = out.trim();
 
     if out == "u" {
         let elapsed = actions::pack(output_dir_path, key, true)?;

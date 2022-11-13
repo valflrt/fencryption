@@ -109,11 +109,11 @@ impl Crypto {
     ///
     /// Example:
     ///
-    /// (See [`TmpDir`][crate::tmp_dir::TmpDir])
+    /// (See [`TmpDir`][crate::tmp::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
-    /// use fencryption_lib::tmp_dir::TmpDir;
+    /// use fencryption_lib::tmp::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
@@ -164,11 +164,11 @@ impl Crypto {
     ///
     /// Example:
     ///
-    /// (See [`TmpDir`][crate::tmp_dir::TmpDir])
+    /// (See [`TmpDir`][crate::tmp::TmpDir])
     ///
     /// ```rust
     /// use fencryption_lib::crypto::Crypto;
-    /// use fencryption_lib::tmp_dir::TmpDir;
+    /// use fencryption_lib::tmp::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";

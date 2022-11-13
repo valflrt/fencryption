@@ -1,4 +1,4 @@
-use fencryption_lib::tmp_dir::TmpDir;
+use fencryption_lib::tmp::TmpDir;
 
 use crate::actions;
 
@@ -26,13 +26,10 @@ fn get_original_after_enc_and_dec() {
     )
     .unwrap();
 
-    assert!(tmp_dir.exists("1.enc/1.1"));
-    assert!(tmp_dir.exists("1.enc/1.3"));
-
-    assert!(tmp_dir.exists("1.enc/1.2/1.2.1"));
-    assert!(tmp_dir.exists("1.enc/1.2/1.2.2"));
-
+    assert!(tmp_dir.exists("1.enc"));
     assert!(tmp_dir.exists("2.enc"));
+
+    assert_eq!(tmp_dir.read_dir().unwrap().fold(0, |a, _| a + 1), 4);
 
     actions::decrypt(
         vec![tmp_dir.path().join("1.enc"), tmp_dir.path().join("2.enc")],

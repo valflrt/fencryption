@@ -9,15 +9,16 @@
 //! packs
 //! - [`FileHeader`][crate::file_header::FileHeader]: A struct
 //! to create/parse file headers
-//! - [`TmpDir`][crate::tmp_dir::TmpDir]: A struct to manipulate
+//! - [`TmpDir`][crate::tmp::TmpDir]: A struct to manipulate
 //! temporary directories
 
 pub mod constants;
 pub mod crypto;
 pub mod file_header;
 pub mod pack;
-pub mod tmp_dir;
+pub mod tmp;
 pub mod walk_dir;
 
 #[cfg(test)]
 mod lib_tests;
+pub mod stream;

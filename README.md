@@ -23,7 +23,7 @@
 
 Fencryption is program to encrypt and decrypt files and full directories. Note that this project is at an early stage of development.
 
-**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.** _I'm just making it for fun btw..._
+**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.** _This is not supposed to be used in "real conditions" anyway_
 
 ## Usage
 
@@ -39,6 +39,8 @@ Usage: fencryption [OPTIONS] <COMMAND>
 Commands:
   encrypt  Encrypt specified file/directory using the passed key
   decrypt  Encrypt specified file/directory using the passed key
+  pack     Pack a directory
+  unpack   Open a pack
   help     Print this message or the help of the given subcommand(s)
 
 Options:

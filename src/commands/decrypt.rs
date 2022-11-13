@@ -61,13 +61,25 @@ pub fn execute(args: &Command) -> ActionResult {
         args.overwrite,
     )?;
 
-    log::println_success(format!(
-        "Decrypted {} files in {}",
-        success.len(),
-        human_duration(&elapsed)
-    ));
+    if !success.is_empty() {
+        log::println_success(format!(
+            "Decrypted {} files in {}",
+            success.len(),
+            human_duration(&elapsed)
+        ));
+        if args.debug {
+            success.iter().for_each(|msg| {
+                log::println_success(log::with_start_line(msg.to_str().unwrap(), "    "))
+            });
+        }
+    }
     if !failed.is_empty() {
         log::println_error(format!("Failed to decrypt {} files", failed.len()));
+        if args.debug {
+            failed.iter().for_each(|msg| {
+                log::println_error(log::with_start_line(msg.to_str().unwrap(), "    "))
+            });
+        }
     }
     if !skipped.is_empty() {
         log::println_info(format!(
@@ -75,6 +87,11 @@ pub fn execute(args: &Command) -> ActionResult {
             skipped.len(),
             if skipped.len() == 1 { "y" } else { "ies" }
         ));
+        if args.debug {
+            skipped.iter().for_each(|msg| {
+                log::println_info(log::with_start_line(msg.to_str().unwrap(), "    "))
+            });
+        }
     }
 
     Ok(())

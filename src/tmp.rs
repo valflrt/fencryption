@@ -1,6 +1,6 @@
 use std::{
     env,
-    fs::{self, File, OpenOptions},
+    fs::{self, File, OpenOptions, ReadDir},
     io,
     path::{Path, PathBuf},
 };
@@ -15,11 +15,9 @@ use std::{
 pub struct TmpDir(PathBuf);
 
 impl TmpDir {
-    pub fn new() -> Result<TmpDir, io::Error> {
+    pub fn new() -> Result<Self, io::Error> {
         let path = env::temp_dir().join(uuid::Uuid::new_v4().to_string());
-        if let Err(e) = fs::create_dir(&path) {
-            return Err(e);
-        }
+        fs::create_dir(&path)?;
         Ok(TmpDir(path))
     }
 
@@ -29,7 +27,7 @@ impl TmpDir {
 
     /// Generates a new unique path in the temporary directory.
     pub fn unique_path(&self) -> PathBuf {
-        self.0.join(uuid::Uuid::new_v4().to_string())
+        self.path().join(uuid::Uuid::new_v4().to_string())
     }
 
     /// Writes to a file (or create it if it doesn't exist)
@@ -89,7 +87,7 @@ impl TmpDir {
 
     /// Opens a file in the temporary directory using the
     /// provided OpenOptions. See [`fs::OpenOptions::open`].
-    pub fn open_file_with_opts<P>(&self, opts: OpenOptions, path: P) -> io::Result<File>
+    pub fn open_file_with_opts<P>(&self, opts: &mut OpenOptions, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
     {
@@ -112,6 +110,11 @@ impl TmpDir {
     {
         self.path().join(path.as_ref()).exists()
     }
+
+    /// Reads temporary directory. Akin to [`fs::read_dir`].
+    pub fn read_dir(&self) -> io::Result<ReadDir> {
+        fs::read_dir(self.path())
+    }
 }
 
 /// Impl Drop trait so when the TmpDir is dropped, the directory
@@ -119,5 +122,47 @@ impl TmpDir {
 impl Drop for TmpDir {
     fn drop(&mut self) {
         fs::remove_dir_all(&self.0).ok();
+    }
+}
+
+/// TmpFile is a struct to manipulate a temporary file.
+///
+/// When this struct is dropped, the temporary file itself is
+/// automatically deleted.
+pub struct TmpFile(PathBuf);
+
+impl TmpFile {
+    pub fn new() -> Result<Self, io::Error> {
+        let path = env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        fs::write(&path, &[])?;
+        Ok(TmpFile(path))
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.0
+    }
+
+    /// Writes to the temporary file. See [`fs::write`].
+    pub fn write_file<C>(&self, contents: C) -> io::Result<()>
+    where
+        C: AsRef<[u8]>,
+    {
+        fs::write(self.path(), contents)
+    }
+
+    /// Reads a the temporary file. See [`fs::read`].
+    pub fn read_file(&self) -> io::Result<Vec<u8>> {
+        fs::read(self.path())
+    }
+
+    /// Opens the temporary file. See [`File::open`].
+    pub fn open(&self) -> io::Result<File> {
+        File::open(self.path())
+    }
+
+    /// Opens the temporary file using the provided OpenOptions.
+    /// See [`fs::OpenOptions::open`].
+    pub fn open_with_opts(&self, opts: &mut OpenOptions) -> io::Result<File> {
+        opts.open(self.path())
     }
 }

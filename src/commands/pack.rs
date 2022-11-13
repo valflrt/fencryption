@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Args)]
-/// Packs a directory
+/// Pack a directory
 ///
 /// Creates a file in which the specified directory is packed.
 /// The original directory is deleted.

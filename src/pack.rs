@@ -7,6 +7,7 @@ use std::{
 use crate::{
     constants::DEFAULT_BUF_LEN,
     file_header::{self, FileHeader, HEADER_LEN},
+    stream::stream,
     walk_dir::{self, WalkDir},
 };
 
@@ -74,17 +75,7 @@ impl Pack {
                     .write_all(&header.to_vec().map_err(|e| ErrorKind::FileHeader(e))?)
                     .map_err(|e| ErrorKind::IO(e))?;
 
-                let mut buffer = [0u8; DEFAULT_BUF_LEN];
-                loop {
-                    let read_len = file.read(&mut buffer).map_err(|e| ErrorKind::IO(e))?;
-                    pack_file
-                        .write(&buffer[..read_len])
-                        .map_err(|e| ErrorKind::IO(e))?;
-
-                    if read_len != DEFAULT_BUF_LEN {
-                        break;
-                    }
-                }
+                stream(&mut file, &mut pack_file).map_err(|e| ErrorKind::IO(e))?;
             }
         }
 

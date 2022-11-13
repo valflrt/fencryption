@@ -4,7 +4,7 @@ use std::{
     time::{self, Duration},
 };
 
-use fencryption_lib::{crypto::Crypto, pack::Pack, tmp_dir::TmpDir};
+use fencryption_lib::{crypto::Crypto, pack::Pack, tmp::TmpDir};
 
 use crate::actions::{ActionError, ActionResult};
 
