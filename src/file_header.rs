@@ -32,7 +32,7 @@ pub struct FileHeader {
 
 impl FileHeader {
     /// Creates a pack file header.
-    pub fn new<P1, P2>(file_path: P1, dir_path: P2) -> Result<FileHeader>
+    pub fn new<P1, P2>(file_path: P1, dir_path: P2) -> Result<Self>
     where
         P1: AsRef<Path>,
         P2: AsRef<Path>,
@@ -45,8 +45,7 @@ impl FileHeader {
             .ok_or(ErrorKind::PathError)?;
 
         // The length of the path (as bytes).
-        let path_len =
-            u32::try_from(path_str.as_bytes().len()).map_err(|_| ErrorKind::ConversionError)?;
+        let path_len = path_str.as_bytes().len() as u32;
         // The length of the file.
         let file_len = fs::metadata(file_path.as_ref())
             .map_err(|e| ErrorKind::IO(e))?
@@ -56,6 +55,24 @@ impl FileHeader {
             path: Some(PathBuf::from(path_str)),
             path_len,
             file_len,
+        })
+    }
+
+    /// Extracts a file header from an array of 12 bytes.
+    pub fn from_bytes(bytes: &[u8; 12]) -> Result<Self> {
+        let path_len_bytes: [u8; PATH_LEN_LEN] = bytes[..PATH_LEN_LEN]
+            .try_into()
+            .map_err(|_| ErrorKind::ConversionError)?;
+        let file_len_bytes: [u8; FILE_LEN_LEN] = bytes[PATH_LEN_LEN..]
+            .try_into()
+            .map_err(|_| ErrorKind::ConversionError)?;
+
+        Ok(FileHeader {
+            path: None,
+            path_len: u32::from_be_bytes(path_len_bytes)
+                .try_into()
+                .map_err(|_| ErrorKind::ConversionError)?,
+            file_len: u64::from_be_bytes(file_len_bytes),
         })
     }
 
@@ -74,33 +91,11 @@ impl FileHeader {
         .concat())
     }
 
-    pub fn path_len_usize(&self) -> Result<usize> {
-        Ok(usize::try_from(self.path_len).map_err(|_| ErrorKind::ConversionError)?)
+    pub fn path_len(&self) -> u32 {
+        self.path_len
     }
 
-    pub fn file_len_u64(&self) -> u64 {
+    pub fn file_len(&self) -> u64 {
         self.file_len
-    }
-}
-
-impl TryFrom<&[u8; 12]> for FileHeader {
-    type Error = ErrorKind;
-
-    /// Extracts a file header from an array of 12 bytes.
-    fn try_from(bytes: &[u8; 12]) -> Result<Self, Self::Error> {
-        let path_len_bytes: [u8; PATH_LEN_LEN] = bytes[..PATH_LEN_LEN]
-            .try_into()
-            .map_err(|_| ErrorKind::ConversionError)?;
-        let file_len_bytes: [u8; FILE_LEN_LEN] = bytes[PATH_LEN_LEN..]
-            .try_into()
-            .map_err(|_| ErrorKind::ConversionError)?;
-
-        Ok(FileHeader {
-            path: None,
-            path_len: u32::from_be_bytes(path_len_bytes)
-                .try_into()
-                .map_err(|_| ErrorKind::ConversionError)?,
-            file_len: u64::from_be_bytes(file_len_bytes),
-        })
     }
 }

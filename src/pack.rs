@@ -103,15 +103,10 @@ impl Pack {
                 break Ok(());
             }
 
-            let header =
-                FileHeader::try_from(&header_bytes).map_err(|e| ErrorKind::FileHeader(e))?;
+            let header: FileHeader =
+                FileHeader::from_bytes(&header_bytes).map_err(|e| ErrorKind::FileHeader(e))?;
 
-            let mut path_bytes = vec![
-                0u8;
-                header
-                    .path_len_usize()
-                    .map_err(|e| ErrorKind::FileHeader(e))?
-            ];
+            let mut path_bytes = vec![0u8; header.path_len() as usize];
             pack_file
                 .read_exact(&mut path_bytes)
                 .map_err(|e| ErrorKind::IO(e))?;
@@ -130,18 +125,12 @@ impl Pack {
                 .open(&path)
                 .map_err(|e| ErrorKind::IO(e))?;
 
-            // Converts the default buffer length into u64.
-            let buf_len_u64 = DEFAULT_BUF_LEN
-                .try_into()
-                .map_err(|_| ErrorKind::ConversionError)?;
-
             // Gets the number of chunks to read before reaching
             // the last bytes.
-            let chunks = header.file_len_u64().div_euclid(buf_len_u64);
+            let chunks = header.file_len().div_euclid(DEFAULT_BUF_LEN as u64);
             // Gets the number of the remaining bytes (after
             // reading all chunks).
-            let rem_len = usize::try_from(header.file_len_u64().rem_euclid(buf_len_u64))
-                .map_err(|_| ErrorKind::ConversionError)?;
+            let rem_len = header.file_len().rem_euclid(DEFAULT_BUF_LEN as u64) as usize;
 
             // Reads all chunks and writes them to the output
             // file.
