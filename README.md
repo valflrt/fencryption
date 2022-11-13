@@ -5,6 +5,7 @@
 
   <p align="center">
     <a href="https://github.com/valflrt/fencryption-rust/actions/workflows/tests.yml"><img alt="test status" src="https://img.shields.io/github/workflow/status/valflrt/fencryption-rust/tests" /></a>
+    <a href="https://docs.rs/fencryption/latest/fencryption_lib/"><img alt="license" src="https://img.shields.io/docsrs/fencryption" /></a>
     <a href="./LICENSE"><img alt="license" src="https://img.shields.io/github/license/valflrt/fencryption-rust" /></a>
   </p>
 
