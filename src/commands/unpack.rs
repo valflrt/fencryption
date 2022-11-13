@@ -16,6 +16,7 @@ use crate::{
 /// close the pack see command "close".
 pub struct Command {
     /// Path of the pack to open
+    #[clap(required = true)]
     path: PathBuf,
 
     /// Permanent unpack
