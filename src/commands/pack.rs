@@ -16,6 +16,7 @@ use crate::{
 /// The original directory is deleted.
 pub struct Command {
     /// Path of the directory to pack
+    #[clap(required = true)]
     path: PathBuf,
 
     /// Delete the original directory after creating pack
