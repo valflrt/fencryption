@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "fencryption"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "aes-gcm",
  "clap",

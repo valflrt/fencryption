@@ -4,7 +4,7 @@ description = "A program to encrypt and decrypt files and full directories"
 authors = ["valflrt"]
 license = "MIT"
 repository = "https://github.com/valflrt/fencryption-rust"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 
 [lib]
