@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use clap::Args;
 use human_duration::human_duration;
@@ -23,6 +23,10 @@ pub struct Command {
     #[clap(short = 'p', long)]
     permanent: bool,
 
+    /// Overwrite if the directory already exists
+    #[clap(short = 'O', long)]
+    overwrite: bool,
+
     #[clap(from_global)]
     pub debug: bool,
 }
@@ -44,6 +48,22 @@ pub fn execute(args: &Command) -> ActionResult {
             .file_stem()
             .ok_or(ActionError::new("Failed to get output path"))?,
     );
+
+    if output_dir_path.exists() {
+        if args.overwrite {
+            if output_dir_path.is_dir() {
+                fs::remove_dir_all(&output_dir_path).map_err(|e| {
+                    ActionError::new_with_error("Failed to overwrite output directory", e)
+                })?;
+            } else if output_dir_path.is_file() {
+                fs::remove_file(&output_dir_path).map_err(|e| {
+                    ActionError::new_with_error("Failed to overwrite output file", e)
+                })?;
+            }
+        } else {
+            return Err(ActionError::new("The output directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)"));
+        }
+    }
 
     let elapsed = actions::unpack(
         args.path.to_owned(),
