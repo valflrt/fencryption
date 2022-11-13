@@ -27,23 +27,22 @@ pub struct Command {
     overwrite: bool,
 
     #[clap(from_global)]
-    debug: bool,
+    pub debug: bool,
 }
 
 pub fn execute(args: &Command) -> ActionResult {
     let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| ActionError::new("Failed to read key", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new_with_error("Failed to read key", e))?;
     let confirm_key = prompt_password(log::format_info("Confirm key: "))
-        .map_err(|e| ActionError::new("Failed to read confirm key", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new_with_error("Failed to read confirm key", e))?;
 
     if key.ne(&confirm_key) {
-        return Err(ActionError::new("The two keys don't match", None));
+        return Err(ActionError::new("The two keys don't match"));
     }
 
     if key.len() < 1 {
         return Err(ActionError::new(
             "The key cannot be less than 1 character long",
-            None,
         ));
     }
 

@@ -23,7 +23,7 @@ pub fn encrypt(
     let timer = time::SystemTime::now();
 
     let crypto = Crypto::new(&key.as_bytes())
-        .map_err(|e| ActionError::new("Failed to create cipher", Some(format!("{:#?}", e))))?;
+        .map_err(|e| ActionError::new_with_error("Failed to create cipher", e))?;
 
     // Runs for every provided input path.
     for input_path in input_paths {
@@ -45,34 +45,20 @@ pub fn encrypt(
             }
         };
 
-        if !input_path.exists() {
-            return Err(ActionError::new(
-                "The item pointed by the given path doesn't exist",
-                None,
-            ));
-        }
-
         if output_path.exists() {
             if overwrite {
                 if output_path.is_dir() {
                     fs::remove_dir_all(&output_path).map_err(|e| {
-                        ActionError::new(
-                            "Failed to overwrite output directory",
-                            Some(format!("{:#?}", e)),
-                        )
+                        ActionError::new_with_error("Failed to overwrite output directory", e)
                     })?;
                 } else if output_path.is_file() {
                     fs::remove_file(&output_path).map_err(|e| {
-                        ActionError::new(
-                            "Failed to overwrite output file",
-                            Some(format!("{:#?}", e)),
-                        )
+                        ActionError::new_with_error("Failed to overwrite output file", e)
                     })?;
                 }
             } else {
                 return Err(ActionError::new(
                     "The output file/directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)",
-                    None,
                 ));
             }
         }
@@ -80,9 +66,9 @@ pub fn encrypt(
         if input_path.is_dir() {
             fs::create_dir(&output_path).ok();
 
-            let walk_dir = WalkDir::new(&input_path).iter().map_err(|e| {
-                ActionError::new("Failed to read directory", Some(format!("{:#?}", e)))
-            })?;
+            let walk_dir = WalkDir::new(&input_path)
+                .iter()
+                .map_err(|e| ActionError::new_with_error("Failed to read directory", e))?;
 
             let threadpool = ThreadPool::new(8);
             let (tx, rx) = channel();
@@ -91,13 +77,12 @@ pub fn encrypt(
             for entry in walk_dir {
                 let crypto = crypto.clone();
 
-                let entry = entry.map_err(|e| {
-                    ActionError::new("Failed to read entry", Some(format!("{:#?}", e)))
-                })?;
+                let entry =
+                    entry.map_err(|e| ActionError::new_with_error("Failed to read entry", e))?;
                 let entry_path = entry.path();
                 let new_entry_path =
                     output_path.join(entry_path.strip_prefix(&input_path).map_err(|e| {
-                        ActionError::new("Couldn't find output path", Some(format!("{:#?}", e)))
+                        ActionError::new_with_error("Couldn't find output path", e)
                     })?);
 
                 if entry_path.is_dir() {
@@ -153,19 +138,14 @@ pub fn encrypt(
                 .read(true)
                 .write(true)
                 .open(&input_path)
-                .map_err(|e| {
-                    ActionError::new("Failed to read source file", Some(format!("{:#?}", e)))
-                })?;
+                .map_err(|e| ActionError::new_with_error("Failed to read source file", e))?;
             let mut dest = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .create(true)
                 .open(&output_path)
                 .map_err(|e| {
-                    ActionError::new(
-                        "Failed to read/create destination file",
-                        Some(format!("{:#?}", e)),
-                    )
+                    ActionError::new_with_error("Failed to read/create destination file", e)
                 })?;
 
             match crypto.encrypt_stream(&mut source, &mut dest) {

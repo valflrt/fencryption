@@ -15,13 +15,24 @@ pub struct ActionError {
 }
 
 impl ActionError {
-    pub fn new<M>(message: M, debug_message: Option<String>) -> Self
+    pub fn new<M>(message: M) -> Self
     where
         M: AsRef<str>,
     {
         ActionError {
             message: message.as_ref().to_string(),
-            debug_message,
+            debug_message: None,
+        }
+    }
+
+    pub fn new_with_error<M, T>(message: M, error: T) -> Self
+    where
+        M: AsRef<str>,
+        T: std::fmt::Debug,
+    {
+        ActionError {
+            message: message.as_ref().to_string(),
+            debug_message: Some(format!("{:#?}", error)),
         }
     }
 

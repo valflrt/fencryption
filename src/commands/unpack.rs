@@ -23,31 +23,25 @@ pub struct Command {
     permanent: bool,
 
     #[clap(from_global)]
-    debug: bool,
+    pub debug: bool,
 }
 
 pub fn execute(args: &Command) -> ActionResult {
     let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
-        Err(e) => {
-            return Err(ActionError::new(
-                "Failed to read key",
-                Some(format!("{:#?}", e)),
-            ))
-        }
+        Err(e) => return Err(ActionError::new_with_error("Failed to read key", e)),
     };
 
     if key.len() < 1 {
         return Err(ActionError::new(
             "The key cannot be less than 1 character long",
-            None,
         ));
     }
 
     let output_dir_path = PathBuf::from(
         args.path
             .file_stem()
-            .ok_or(ActionError::new("Failed to get output path", None))?,
+            .ok_or(ActionError::new("Failed to get output path"))?,
     );
 
     let elapsed = actions::unpack(
@@ -63,7 +57,7 @@ pub fn execute(args: &Command) -> ActionResult {
     let out = log::prompt(
         "Do you want to update the pack ('u') or exit and discard changes ('q') [u/q] ",
     )
-    .map_err(|e| ActionError::new("Failed to read input", Some(format!("{:#?}", e))))?;
+    .map_err(|e| ActionError::new_with_error("Failed to read input", e))?;
 
     if out == "u" {
         let elapsed = actions::pack(output_dir_path, key, true)?;
