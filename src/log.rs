@@ -27,13 +27,17 @@ fn format_message<M>(message: M, kind: LogKind) -> String
 where
     M: AsRef<str>,
 {
-    let line_start = match kind {
-        LogKind::Info => " ".black().on_white(),
-        LogKind::Success => " ".black().on_bright_green(),
-        LogKind::Error => " ".black().on_bright_red(),
+    if supports_color::on(supports_color::Stream::Stdout).is_some() {
+        let line_start = match kind {
+            LogKind::Info => " ".black().on_white(),
+            LogKind::Success => " ".black().on_bright_green(),
+            LogKind::Error => " ".black().on_bright_red(),
+        }
+        .to_string();
+        with_start_line(message, line_start)
+    } else {
+        message.as_ref().to_string()
     }
-    .to_string();
-    with_start_line(message, line_start)
 }
 
 pub fn format_info<M>(message: M) -> String
