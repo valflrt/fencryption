@@ -15,6 +15,7 @@ fn move_chunk(
     Ok(read_len)
 }
 
+/// Transfers data from a file to another.
 pub fn stream(from: &mut File, to: &mut File) -> io::Result<()> {
     let mut buffer = [0u8; DEFAULT_BUF_LEN];
     loop {

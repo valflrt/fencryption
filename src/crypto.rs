@@ -8,7 +8,9 @@ use std::{
 
 use crate::constants::DEFAULT_BUF_LEN;
 
+/// Default initialization vector length
 const IV_LEN: usize = 96 / 8; // 12
+/// Default authentication tag length
 const TAG_LEN: usize = 128 / 8; // 16
 
 #[derive(Debug)]
