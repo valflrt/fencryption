@@ -28,12 +28,15 @@ where
     M: AsRef<str>,
 {
     if supports_color::on(supports_color::Stream::Stdout).is_some() {
-        with_start_line(message, match kind {
-            LogKind::Info => " ".on_white(),
-            LogKind::Success => " ".on_bright_green(),
-            LogKind::Error => " ".on_bright_red(),
-        }
-        .to_string())
+        with_start_line(
+            message,
+            match kind {
+                LogKind::Info => " ".on_white(),
+                LogKind::Success => " ".on_bright_green(),
+                LogKind::Error => " ".on_bright_red(),
+            }
+            .to_string(),
+        )
     } else {
         message.as_ref().to_string()
     }
