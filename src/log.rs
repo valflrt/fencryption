@@ -27,7 +27,8 @@ fn format_message<M>(message: M, kind: LogKind) -> String
 where
     M: AsRef<str>,
 {
-    if supports_color::on(supports_color::Stream::Stdout).is_some() {
+    if supports_color::on(supports_color::Stream::Stdout).is_some() && cfg!(target_family = "unix")
+    {
         with_start_line(
             message,
             match kind {
