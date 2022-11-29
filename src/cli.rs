@@ -11,7 +11,6 @@ pub fn handle_error(error: ActionError, debug: bool) {
             log::println_error(log::with_start_line(d, "    "));
         }
     }
-    quit::with_code(1);
 }
 
 #[derive(Parser)]
