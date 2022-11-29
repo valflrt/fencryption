@@ -32,6 +32,9 @@ pub struct FileHeader {
 
 impl FileHeader {
     /// Creates a pack file header.
+    ///
+    /// The dir_path argument is used to determine the relative
+    /// file path.
     pub fn new<P1, P2>(file_path: P1, dir_path: P2) -> Result<Self>
     where
         P1: AsRef<Path>,

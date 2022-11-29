@@ -25,6 +25,10 @@ pub struct Command {
     #[clap(short = 'O', long)]
     overwrite: bool,
 
+    /// Delete the original directory after encrypting
+    #[clap(short = 'd', long)]
+    delete_original: bool,
+
     #[clap(from_global)]
     pub debug: bool,
 }
@@ -38,10 +42,17 @@ pub fn execute(args: &Command) -> ActionResult {
         return Err(ActionError::new("One or more provided paths don't exist"));
     }
 
-    if args.output_path.is_some() && args.paths.len() != 1 {
-        return Err(ActionError::new(
-            "Only one input path can be provided when setting an output path",
-        ));
+    if args.output_path.is_some() {
+        if args.paths.len() != 1 {
+            return Err(ActionError::new(
+                "Only one input path can be provided when setting an output path",
+            ));
+        }
+        if args.output_path.as_ref().unwrap().exists() {
+            return Err(ActionError::new(
+                "The specified custom output file/directory already exists, please remove it",
+            ));
+        }
     }
 
     let key = prompt_password(log::format_info("Enter key: "))
@@ -66,6 +77,7 @@ pub fn execute(args: &Command) -> ActionResult {
         args.output_path.to_owned(),
         key,
         args.overwrite,
+        args.delete_original,
     )?;
 
     if !success.is_empty() {

@@ -23,6 +23,7 @@ fn get_original_after_enc_and_dec() {
         None,
         KEY.to_string(),
         false,
+        false,
     )
     .unwrap();
 
@@ -35,6 +36,7 @@ fn get_original_after_enc_and_dec() {
         vec![tmp_dir.path().join("1.enc"), tmp_dir.path().join("2.enc")],
         None,
         KEY.to_string(),
+        false,
         false,
     )
     .unwrap();
@@ -69,7 +71,14 @@ fn overwrite_output_dirs() {
     tmp_dir.create_dir("1.dec").unwrap();
     tmp_dir.write_file("1.dec/hello2", &[]).unwrap();
 
-    actions::encrypt(vec![tmp_dir.path().join("1")], None, KEY.to_string(), true).unwrap();
+    actions::encrypt(
+        vec![tmp_dir.path().join("1")],
+        None,
+        KEY.to_string(),
+        true,
+        false,
+    )
+    .unwrap();
 
     assert!(!tmp_dir.exists("1.enc/hello"));
 
@@ -78,10 +87,41 @@ fn overwrite_output_dirs() {
         None,
         KEY.to_string(),
         true,
+        false,
     )
     .unwrap();
 
     assert!(!tmp_dir.exists("1.dec/hello2"));
+}
+
+#[test]
+fn delete_original_directory_when_enc_dec_if_asked() {
+    let tmp_dir = TmpDir::new().unwrap();
+
+    tmp_dir.create_dir_all("1").unwrap();
+    tmp_dir.write_file("1/1.1", b"1.1").unwrap();
+
+    actions::encrypt(
+        vec![tmp_dir.path().to_path_buf()],
+        None,
+        KEY.to_string(),
+        false,
+        true,
+    )
+    .unwrap();
+
+    assert!(!tmp_dir.exists("1"));
+
+    actions::decrypt(
+        vec![tmp_dir.path().join("1.enc")],
+        None,
+        KEY.to_string(),
+        false,
+        true,
+    )
+    .unwrap();
+
+    assert!(!tmp_dir.exists("1.enc"));
 }
 
 #[test]
@@ -117,4 +157,16 @@ fn get_original_after_pack_and_unpack() {
 
     assert_eq!(tmp_dir.read_file("1.dec/1.2/1.2.1").unwrap(), b"1.2.1");
     assert_eq!(tmp_dir.read_file("1.dec/1.2/1.2.2").unwrap(), b"1.2.2");
+}
+
+#[test]
+fn delete_original_directory_when_creating_pack() {
+    let tmp_dir = TmpDir::new().unwrap();
+
+    tmp_dir.create_dir_all("1").unwrap();
+    tmp_dir.write_file("1/1.1", b"1.1").unwrap();
+
+    actions::pack(tmp_dir.path().join("1"), KEY.to_string(), true).unwrap();
+
+    assert!(!tmp_dir.exists("1"));
 }

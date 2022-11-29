@@ -19,13 +19,13 @@ pub struct Command {
     #[clap(required = true)]
     path: PathBuf,
 
-    /// Delete the original directory after creating pack
-    #[clap(short = 'n', long)]
-    delete: bool,
-
     /// Overwrite the output pack
     #[clap(short = 'O', long)]
     overwrite: bool,
+
+    /// Delete the original directory after creating pack
+    #[clap(short = 'd', long)]
+    delete_original: bool,
 
     #[clap(from_global)]
     pub debug: bool,
@@ -49,7 +49,7 @@ pub fn execute(args: &Command) -> ActionResult {
 
     log::println_info("Packing...");
 
-    let elapsed = actions::pack(args.path.to_owned(), key, args.delete)?;
+    let elapsed = actions::pack(args.path.to_owned(), key, args.delete_original)?;
 
     log::println_success(format!("{} elapsed", human_duration(&elapsed)));
 

@@ -18,6 +18,7 @@ pub fn encrypt(
     output_path: Option<PathBuf>,
     key: String,
     overwrite: bool,
+    delete_original: bool,
 ) -> ActionResult<(Duration, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)> {
     let mut success_paths: Vec<PathBuf> = Vec::new();
     let mut skipped_paths: Vec<PathBuf> = Vec::new();
@@ -206,7 +207,23 @@ pub fn encrypt(
                 Err(_) => failed_paths.push(input_path.to_owned()),
             };
         } else {
-            skipped_paths.push(input_path);
+            skipped_paths.push(input_path.to_owned());
+        }
+
+        if delete_original && input_path.exists() {
+            if input_path.is_dir() {
+                fs::remove_dir_all(input_path).map_err(|e| {
+                    ActionError::new_with_error("Failed to remove original directory", e)
+                })?;
+            } else if input_path.is_file() {
+                fs::remove_file(input_path).map_err(|e| {
+                    ActionError::new_with_error("Failed to remove original file", e)
+                })?;
+            } else {
+                return Err(ActionError::new(
+                    "Failed to remove original item (unknown type)",
+                ));
+            }
         }
     }
 
