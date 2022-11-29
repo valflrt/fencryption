@@ -59,6 +59,8 @@ pub fn execute(args: &Command) -> ActionResult {
         ));
     }
 
+    log::println_info("Encrypting...");
+
     let (elapsed, success, skipped, failed) = actions::encrypt(
         args.paths.to_owned(),
         args.output_path.to_owned(),

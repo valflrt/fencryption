@@ -54,6 +54,8 @@ pub fn execute(args: &Command) -> ActionResult {
         ));
     }
 
+    log::println_info("Decrypting...");
+
     let (elapsed, success, skipped, failed) = actions::decrypt(
         args.paths.to_owned(),
         args.output_path.to_owned(),

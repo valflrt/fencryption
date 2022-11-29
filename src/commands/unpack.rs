@@ -65,6 +65,8 @@ pub fn execute(args: &Command) -> ActionResult {
         }
     }
 
+    log::println_info("Unpacking...");
+
     let elapsed = actions::unpack(
         args.path.to_owned(),
         output_dir_path.to_owned(),
@@ -82,6 +84,7 @@ pub fn execute(args: &Command) -> ActionResult {
     let out = out.trim();
 
     if out == "u" {
+        log::println_info("Updating pack...");
         let elapsed = actions::pack(output_dir_path, key, true)?;
         log::println_success(format!(
             "Updated pack ({} elapsed)",

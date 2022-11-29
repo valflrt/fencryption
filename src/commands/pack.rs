@@ -47,6 +47,8 @@ pub fn execute(args: &Command) -> ActionResult {
         ));
     }
 
+    log::println_info("Packing...");
+
     let elapsed = actions::pack(args.path.to_owned(), key, args.delete)?;
 
     log::println_success(format!("{} elapsed", human_duration(&elapsed)));
