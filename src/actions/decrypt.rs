@@ -83,8 +83,8 @@ pub fn decrypt(
                 if entry_path.is_file() {
                     tries_nb += 1;
                     let tx = tx.clone();
-                    let entry_path = entry_path.clone();
                     let output_path = output_path.clone();
+                    let entry_path = entry_path.clone();
                     threadpool.execute(move || {
                         let tmp_file = match TmpFile::new() {
                             Ok(v) => v,
@@ -171,7 +171,7 @@ pub fn decrypt(
                         if let Err(_) = stream(&mut source, &mut dest) {
                             tx.send((entry_path, false)).unwrap();
                             return;
-                        };
+                        }
 
                         tx.send((entry_path, true)).unwrap();
                     });
