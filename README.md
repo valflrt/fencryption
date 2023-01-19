@@ -67,6 +67,8 @@ Options:
 - [x] Add packing feature: makes a file with all the files packed inside (a pack) that is then encrypted
   - [x] Command `pack` creates a pack from the specified directory
   - [x] Command `unpack` creates a directory where decrypted files (from the encrypted "pack") appear, you can then choose to update the pack with the changes made in the directory or to discard them
+- [ ] Refactor, refactor and refactor (aha)
+- [ ] Come up with a stable version
 
 <!-- ## Ideas
 
