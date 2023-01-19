@@ -53,7 +53,7 @@ Options:
 
 ## Limitations
 
-- Pack files can get pretty huge therefore, it is possible that they exceed the maximum file size of some file systems (for example the maximum file size of fat32 is 4GB).
+- Pack files can get pretty huge therefore it is possible that they exceed the maximum file size of some file systems (for example the maximum file size of fat32 is 4GB).
 
 ## Todo
 
