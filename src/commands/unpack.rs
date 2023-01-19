@@ -5,7 +5,7 @@ use human_duration::human_duration;
 use rpassword::prompt_password;
 
 use crate::{
-    actions::{self, ActionError, ActionResult},
+    executions::{self, ActionError, ActionResult},
     log,
 };
 
@@ -34,7 +34,7 @@ pub struct Command {
 pub fn execute(args: &Command) -> ActionResult {
     let key = match prompt_password(log::format_info("Enter key: ")) {
         Ok(v) => v,
-        Err(e) => return Err(ActionError::new_with_error("Failed to read key", e)),
+        Err(e) => return Err(ActionError::new("Failed to read key").error(e)),
     };
 
     if key.len() < 1 {
@@ -53,12 +53,11 @@ pub fn execute(args: &Command) -> ActionResult {
         if args.overwrite {
             if output_dir_path.is_dir() {
                 fs::remove_dir_all(&output_dir_path).map_err(|e| {
-                    ActionError::new_with_error("Failed to overwrite output directory", e)
+                    ActionError::new("Failed to overwrite output directory").error(e)
                 })?;
             } else if output_dir_path.is_file() {
-                fs::remove_file(&output_dir_path).map_err(|e| {
-                    ActionError::new_with_error("Failed to overwrite output file", e)
-                })?;
+                fs::remove_file(&output_dir_path)
+                    .map_err(|e| ActionError::new("Failed to overwrite output file").error(e))?;
             }
         } else {
             return Err(ActionError::new("The output directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)"));
@@ -67,7 +66,7 @@ pub fn execute(args: &Command) -> ActionResult {
 
     log::println_info("Unpacking...");
 
-    let elapsed = actions::unpack(
+    let elapsed = executions::unpack(
         args.path.to_owned(),
         output_dir_path.to_owned(),
         key.to_owned(),
@@ -80,12 +79,12 @@ pub fn execute(args: &Command) -> ActionResult {
     let out = log::prompt(
         "Do you want to update the pack ('u') or exit and discard changes ('q') [u/Q] ",
     )
-    .map_err(|e| ActionError::new_with_error("Failed to read input", e))?;
+    .map_err(|e| ActionError::new("Failed to read input").error(e))?;
     let out = out.trim();
 
     if out == "u" {
         log::println_info("Updating pack...");
-        let elapsed = actions::pack(output_dir_path, key, true)?;
+        let elapsed = executions::pack(output_dir_path, key, true, true)?;
         log::println_success(format!(
             "Updated pack ({} elapsed)",
             human_duration(&elapsed)

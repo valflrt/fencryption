@@ -5,7 +5,7 @@ use human_duration::human_duration;
 use rpassword::{self, prompt_password};
 
 use crate::{
-    actions::{self, ActionError, ActionResult},
+    executions::{self, ActionError, ActionResult},
     log,
 };
 
@@ -56,9 +56,9 @@ pub fn execute(args: &Command) -> ActionResult {
     }
 
     let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| ActionError::new_with_error("Failed to read key", e))?;
+        .map_err(|e| ActionError::new("Failed to read key").error(e))?;
     let confirm_key = prompt_password(log::format_info("Confirm key: "))
-        .map_err(|e| ActionError::new_with_error("Failed to read confirm key", e))?;
+        .map_err(|e| ActionError::new("Failed to read confirm key").error(e))?;
 
     if key.ne(&confirm_key) {
         return Err(ActionError::new("The two keys don't match"));
@@ -72,7 +72,7 @@ pub fn execute(args: &Command) -> ActionResult {
 
     log::println_info("Encrypting...");
 
-    let (elapsed, success, skipped, failed) = actions::encrypt(
+    let (elapsed, success, skipped, failed) = executions::encrypt(
         args.paths.to_owned(),
         args.output_path.to_owned(),
         key,

@@ -5,7 +5,7 @@ use human_duration::human_duration;
 use rpassword::prompt_password;
 
 use crate::{
-    actions::{self, ActionError, ActionResult},
+    executions::{self, ActionError, ActionResult},
     log,
 };
 
@@ -57,7 +57,7 @@ pub fn execute(args: &Command) -> ActionResult {
     }
 
     let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| ActionError::new_with_error("Failed to read key", e))?;
+        .map_err(|e| ActionError::new("Failed to read key").error(e))?;
 
     if key.len() < 1 {
         return Err(ActionError::new(
@@ -67,7 +67,7 @@ pub fn execute(args: &Command) -> ActionResult {
 
     log::println_info("Decrypting...");
 
-    let (elapsed, success, skipped, failed) = actions::decrypt(
+    let (elapsed, success, skipped, failed) = executions::decrypt(
         args.paths.to_owned(),
         args.output_path.to_owned(),
         key,

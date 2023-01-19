@@ -15,7 +15,7 @@
 pub mod constants;
 pub mod crypto;
 pub mod file_header;
-pub mod metadata;
+// pub mod metadata;
 pub mod pack;
 pub mod tmp;
 pub mod walk_dir;

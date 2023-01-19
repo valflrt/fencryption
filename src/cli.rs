@@ -1,6 +1,6 @@
 use clap::{command, Parser};
 
-use crate::{actions::ActionError, commands, log};
+use crate::{commands, executions::ActionError, log};
 
 /// Handles command action error
 pub fn handle_error(error: ActionError, debug: bool) {

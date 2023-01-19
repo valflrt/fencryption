@@ -1,15 +1,18 @@
 use aes_gcm::{aead::Aead, aes::cipher::InvalidLength, Aes256Gcm, KeyInit, Nonce};
 use rand::{rngs::OsRng, RngCore};
-use ring::digest;
+use sha2::{Digest, Sha256};
 use std::{
     fs::File,
     io::{self, Read, Write},
 };
 
-use crate::constants::DEFAULT_BUF_LEN;
+use crate::constants::DEFAULT_CHUNK_LEN;
+
+// TODO: Make chunk size way larger so that a iv can be used
+// for each chunk
 
 /// Default initialization vector length
-const IV_LEN: usize = 96 / 8; // 12
+const IV_LEN: usize = 92 / 8; // 12
 /// Default authentication tag length
 const TAG_LEN: usize = 128 / 8; // 16
 
@@ -33,14 +36,14 @@ impl Crypto {
     where
         K: AsRef<[u8]>,
     {
+        let key = hash_key(key.as_ref());
         Ok(Crypto {
-            cipher: Aes256Gcm::new_from_slice(&hash_key(key.as_ref()))
-                .map_err(|e| ErrorKind::InvalidKeyLength(e))?,
+            cipher: Aes256Gcm::new_from_slice(&key).map_err(|e| ErrorKind::InvalidKeyLength(e))?,
         })
     }
 
     /// Basic function to encrypt.
-    pub fn encrypt_with_nonce(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn encrypt_with_iv(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         Ok(self
             .cipher
             .encrypt(Nonce::from_slice(iv), plaintext)
@@ -48,7 +51,7 @@ impl Crypto {
     }
 
     /// Basic function to decrypt.
-    pub fn decrypt_with_nonce(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn decrypt_with_iv(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         Ok(self
             .cipher
             .decrypt(Nonce::from_slice(iv), ciphertext)
@@ -75,8 +78,8 @@ impl Crypto {
     where
         P: AsRef<[u8]>,
     {
-        let iv = &random_iv();
-        Ok([iv, self.encrypt_with_nonce(plain.as_ref(), iv)?.as_slice()].concat())
+        let iv = random_iv();
+        Ok([&iv, self.encrypt_with_iv(plain.as_ref(), &iv)?.as_slice()].concat())
     }
 
     /// Decrypt a small piece of data.
@@ -103,7 +106,7 @@ impl Crypto {
         let iv = &enc.as_ref()[..IV_LEN];
         let ciphertext = &enc.as_ref()[IV_LEN..];
 
-        self.decrypt_with_nonce(ciphertext, iv)
+        self.decrypt_with_iv(ciphertext, iv)
     }
 
     /// Encrypt a stream from a source and a destination
@@ -139,21 +142,16 @@ impl Crypto {
     ///     .unwrap();
     /// ```
     pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
-        let iv = random_iv();
-
-        const BUFFER_LEN: usize = DEFAULT_BUF_LEN;
-        let mut buffer = [0u8; BUFFER_LEN];
-
-        dest.write_all(&iv).map_err(|e| ErrorKind::Io(e))?;
+        const CHUNK_LEN: usize = DEFAULT_CHUNK_LEN;
+        let mut buffer = [0u8; CHUNK_LEN];
 
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-
-            dest.write(&self.encrypt_with_nonce(&buffer[..read_len], &iv)?)
+            dest.write(&self.encrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
 
             // Stops when the loop reached the end of the file
-            if read_len != BUFFER_LEN {
+            if read_len != CHUNK_LEN {
                 break;
             }
         }
@@ -205,20 +203,15 @@ impl Crypto {
     /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message);
     /// ```
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
-        const BUFFER_LEN: usize = DEFAULT_BUF_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
-        let mut buffer = [0u8; BUFFER_LEN];
-
-        let mut iv = [0u8; IV_LEN];
-        source.read_exact(&mut iv).map_err(|e| ErrorKind::Io(e))?;
+        const CHUNK_LEN: usize = DEFAULT_CHUNK_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
+        let mut buffer = [0u8; CHUNK_LEN];
 
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-
-            dest.write(&self.decrypt_with_nonce(&buffer[..read_len], &iv)?)
+            dest.write(&self.decrypt_with_iv(&buffer[TAG_LEN..read_len], &buffer[..TAG_LEN])?)
                 .map_err(|e| ErrorKind::Io(e))?;
-
             // Stops when the loop reached the end of the file.
-            if read_len != BUFFER_LEN {
+            if read_len != CHUNK_LEN {
                 break;
             }
         }
@@ -231,9 +224,9 @@ fn hash_key<K>(key: K) -> Vec<u8>
 where
     K: AsRef<[u8]>,
 {
-    digest::digest(&digest::SHA256, key.as_ref())
-        .as_ref()
-        .to_owned()
+    let mut hasher = Sha256::new();
+    hasher.update(key.as_ref());
+    hasher.finalize().to_vec()
 }
 
 fn random_iv() -> Vec<u8> {

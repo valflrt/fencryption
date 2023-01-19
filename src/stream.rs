@@ -3,10 +3,10 @@ use std::{
     io::{self, Read, Write},
 };
 
-use crate::constants::DEFAULT_BUF_LEN;
+use crate::constants::DEFAULT_CHUNK_LEN;
 
 fn move_chunk(
-    buf: &mut [u8; DEFAULT_BUF_LEN],
+    buf: &mut [u8; DEFAULT_CHUNK_LEN],
     from: &mut File,
     to: &mut File,
 ) -> io::Result<usize> {
@@ -17,10 +17,10 @@ fn move_chunk(
 
 /// Transfers data from a file to another.
 pub fn stream(from: &mut File, to: &mut File) -> io::Result<()> {
-    let mut buffer = [0u8; DEFAULT_BUF_LEN];
+    let mut buffer = [0u8; DEFAULT_CHUNK_LEN];
     loop {
         let read_len = move_chunk(&mut buffer, from, to)?;
-        if read_len != DEFAULT_BUF_LEN {
+        if read_len != DEFAULT_CHUNK_LEN {
             break;
         }
     }

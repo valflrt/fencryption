@@ -1,2 +1,2 @@
-/// Default buffer (for io) length.
-pub const DEFAULT_BUF_LEN: usize = 8192;
+/// Default chunk (for io) length (8mb).
+pub const DEFAULT_CHUNK_LEN: usize = 64000000 / 8;

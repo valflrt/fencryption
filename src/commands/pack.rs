@@ -5,7 +5,7 @@ use human_duration::human_duration;
 use rpassword::{self, prompt_password};
 
 use crate::{
-    actions::{self, ActionError, ActionResult},
+    executions::{self, ActionError, ActionResult},
     log,
 };
 
@@ -32,10 +32,14 @@ pub struct Command {
 }
 
 pub fn execute(args: &Command) -> ActionResult {
+    if !args.path.is_dir() {
+        return Err(ActionError::new("The path must lead to a directory"));
+    }
+
     let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| ActionError::new_with_error("Failed to read key", e))?;
+        .map_err(|e| ActionError::new("Failed to read key").error(e))?;
     let confirm_key = prompt_password(log::format_info("Confirm key: "))
-        .map_err(|e| ActionError::new_with_error("Failed to read confirm key", e))?;
+        .map_err(|e| ActionError::new("Failed to read confirm key").error(e))?;
 
     if key.ne(&confirm_key) {
         return Err(ActionError::new("The two keys don't match"));
@@ -49,7 +53,12 @@ pub fn execute(args: &Command) -> ActionResult {
 
     log::println_info("Packing...");
 
-    let elapsed = actions::pack(args.path.to_owned(), key, args.delete_original)?;
+    let elapsed = executions::pack(
+        args.path.to_owned(),
+        key,
+        args.overwrite,
+        args.delete_original,
+    )?;
 
     log::println_success(format!("{} elapsed", human_duration(&elapsed)));
 
