@@ -1,2 +1,2 @@
-/// Default chunk (for io) length (8mb).
-pub const DEFAULT_CHUNK_LEN: usize = 64000000 / 8;
+/// Default chunk (for io) length (4mb).
+pub const DEFAULT_CHUNK_LEN: usize = 32000000 / 8;

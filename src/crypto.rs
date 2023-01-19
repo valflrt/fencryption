@@ -8,11 +8,8 @@ use std::{
 
 use crate::constants::DEFAULT_CHUNK_LEN;
 
-// TODO: Make chunk size way larger so that a iv can be used
-// for each chunk
-
 /// Default initialization vector length
-const IV_LEN: usize = 92 / 8; // 12
+const IV_LEN: usize = 96 / 8; // 12
 /// Default authentication tag length
 const TAG_LEN: usize = 128 / 8; // 16
 
@@ -149,7 +146,6 @@ impl Crypto {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
             dest.write(&self.encrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
-
             // Stops when the loop reached the end of the file
             if read_len != CHUNK_LEN {
                 break;
@@ -203,12 +199,12 @@ impl Crypto {
     /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message);
     /// ```
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
-        const CHUNK_LEN: usize = DEFAULT_CHUNK_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
+        const CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
         let mut buffer = [0u8; CHUNK_LEN];
 
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-            dest.write(&self.decrypt_with_iv(&buffer[TAG_LEN..read_len], &buffer[..TAG_LEN])?)
+            dest.write(&self.decrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
             // Stops when the loop reached the end of the file.
             if read_len != CHUNK_LEN {
