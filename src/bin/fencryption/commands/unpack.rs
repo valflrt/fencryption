@@ -66,12 +66,6 @@ pub fn execute(args: &Command) -> ActionResult {
 
     log::println_info("Unpacking...");
 
-    let elapsed = executions::unpack(
-        args.path.to_owned(),
-        output_dir_path.to_owned(),
-        key.to_owned(),
-    )?;
-
     if args.permanent {
         return Ok(());
     }

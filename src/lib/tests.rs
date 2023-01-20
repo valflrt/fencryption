@@ -31,17 +31,17 @@ fn get_original_data_after_encrypting_and_decrypting_file() {
     let tmp_dir = TmpDir::new().unwrap();
 
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
-    crypto
-        .encrypt_stream(
-            &mut tmp_dir.open_file("plain").unwrap(),
-            &mut tmp_dir.create_file("enc").unwrap(),
-        )
-        .unwrap();
 
     crypto
+        .encrypt_stream(
+            tmp_dir.open_file("plain").unwrap(),
+            tmp_dir.create_file("enc").unwrap(),
+        )
+        .unwrap();
+    crypto
         .decrypt_stream(
-            &mut tmp_dir.open_file("enc").unwrap(),
-            &mut tmp_dir.create_file("dec").unwrap(),
+            tmp_dir.open_file("enc").unwrap(),
+            tmp_dir.create_file("dec").unwrap(),
         )
         .unwrap();
 
@@ -57,17 +57,18 @@ fn fail_to_decrypt_file_when_key_is_wrong() {
     let tmp_dir = TmpDir::new().unwrap();
 
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
+
     crypto1
         .encrypt_stream(
-            &mut tmp_dir.open_file("plain").unwrap(),
-            &mut tmp_dir.create_file("enc").unwrap(),
+            tmp_dir.open_file("plain").unwrap(),
+            tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
 
     crypto2
         .decrypt_stream(
-            &mut tmp_dir.open_file("enc").unwrap(),
-            &mut tmp_dir.create_file("dec").unwrap(),
+            tmp_dir.open_file("enc").unwrap(),
+            tmp_dir.create_file("dec").unwrap(),
         )
         .unwrap();
 }

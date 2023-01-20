@@ -1,4 +1,0 @@
-- when a file is involved, check if it exists
-- when writing output file/dir, check if it exists and overwrite if asked
-- create directories when needed
-- delete original when asked

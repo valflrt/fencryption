@@ -9,7 +9,11 @@ edition = "2021"
 
 [lib]
 name = "fencryption_lib"
-path = "src/lib.rs"
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "fencryption"
+path = "src/bin/fencryption/bin.rs"
 
 [dependencies]
 aes-gcm = "0.10.1"
