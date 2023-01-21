@@ -22,7 +22,6 @@ impl TmpDir {
         Ok(TmpDir(path))
     }
 
-    /// Clones temporary directory path and returns it.
     pub fn path(&self) -> PathBuf {
         self.0.clone()
     }
@@ -78,18 +77,27 @@ impl TmpDir {
         File::create(self.0.join(path))
     }
 
-    /// Opens a file in the temporary directory. See
-    /// [`File::open`].
-    pub fn open_file<P>(&self, path: P) -> io::Result<File>
+    /// Opens a file in the temporary directory in read-only
+    /// mode. See [`File::open`].
+    pub fn open_readable<P>(&self, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
     {
         File::open(self.0.join(path))
     }
 
+    /// Opens a file in the temporary directory in write-only
+    /// mode. See [`File::open`].
+    pub fn open_writable<P>(&self, path: P) -> io::Result<File>
+    where
+        P: AsRef<Path>,
+    {
+        OpenOptions::new().write(true).open(self.0.join(path))
+    }
+
     /// Opens a file in the temporary directory using the
     /// provided OpenOptions. See [`fs::OpenOptions::open`].
-    pub fn open_file_with_opts<P>(&self, opts: &mut OpenOptions, path: P) -> io::Result<File>
+    pub fn open_with_opts<P>(&self, opts: &mut OpenOptions, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
     {
@@ -140,26 +148,32 @@ impl TmpFile {
         Ok(TmpFile(path))
     }
 
-    /// Clones temporary file path and returns it.
     pub fn path(&self) -> PathBuf {
         self.0.clone()
     }
 
     /// Writes to the temporary file. See [`fs::write`].
-    pub fn write_file<C>(&self, contents: C) -> io::Result<()>
+    pub fn write<C>(&self, contents: C) -> io::Result<()>
     where
         C: AsRef<[u8]>,
     {
         fs::write(&self.0, contents)
     }
 
-    /// Reads a the temporary file. See [`fs::read`].
-    pub fn read_file(&self) -> io::Result<Vec<u8>> {
+    /// Reads the temporary file. See [`fs::read`].
+    pub fn read(&self) -> io::Result<Vec<u8>> {
         fs::read(&self.0)
     }
 
-    /// Opens the temporary file. See [`File::open`].
-    pub fn open(&self) -> io::Result<File> {
+    /// Opens the temporary file in read-only mode. See
+    /// [`File::open`].
+    pub fn open_readable(&self) -> io::Result<File> {
+        File::open(&self.0)
+    }
+
+    /// Opens the temporary file in write-only mode. See
+    /// [`File::open`].
+    pub fn open_writable(&self) -> io::Result<File> {
         File::open(&self.0)
     }
 

@@ -193,7 +193,7 @@ where
             .build()
     })?;
 
-    let mut source = tmp_file.open().map_err(|e| {
+    let mut source = tmp_file.open_writable().map_err(|e| {
         ErrorBuilder::new()
             .message("Failed to read temporary file")
             .error(e)
@@ -262,7 +262,7 @@ where
             .build()
     })?;
 
-    let mut source = tmp_file.open().map_err(|e| {
+    let mut source = tmp_file.open_writable().map_err(|e| {
         ErrorBuilder::new()
             .message("Failed to read temporary file")
             .error(e)
