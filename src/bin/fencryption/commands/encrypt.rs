@@ -1,11 +1,16 @@
-use std::{path::PathBuf, time};
+use std::{fs, path::PathBuf, sync::mpsc::channel, time};
 
 use clap::{arg, Args};
 use fencryption_lib::{crypto::Crypto, walk_dir::WalkDir};
-use human_duration::human_duration;
-use rpassword::{self, prompt_password};
+use threadpool::ThreadPool;
+use uuid::Uuid;
 
-use crate::{error::ErrorBuilder, log, result::Result};
+use crate::{
+    error::{Error, ErrorBuilder},
+    log,
+    logic::{self},
+    result::Result,
+};
 
 #[derive(Args, Clone)]
 /// Encrypt specified file/directory using the passed key
@@ -32,123 +37,115 @@ pub struct Command {
 }
 
 pub fn execute(args: &Command) -> Result<()> {
-    if args.paths.len() == 0 {
-        return Err(ErrorBuilder::new()
-            .error_message("Please provide at least one path")
-            .debug_mode(args.debug)
-            .build());
-    }
+    logic::checks(&args.paths, &args.output_path)?;
 
-    if args.paths.iter().any(|p| !p.exists()) {
-        return Err(ErrorBuilder::new()
-            .error_message("I can't work with files that don't exist")
-            .debug_mode(args.debug)
-            .build());
-    }
-
-    if args.output_path.is_some() {
-        if args.paths.len() != 1 {
-            return Err(ErrorBuilder::new()
-                .debug_message("Only one input path can be provided when setting an output path")
-                .debug_mode(args.debug)
-                .build());
-        }
-        if args.output_path.as_ref().unwrap().exists() {
-            return Err(ErrorBuilder::new()
-                .error_message(
-                    "The specified output path leads to a file or a directory, please remove it",
-                )
-                .debug_mode(args.debug)
-                .build());
-        }
-    }
-
-    let key = prompt_password(log::format_info("Enter key: ")).map_err(|e| {
-        ErrorBuilder::new()
-            .error_message("Failed to read key")
-            .debug_error(e)
-            .debug_mode(args.debug)
-            .build()
-    })?;
-    let confirm_key = prompt_password(log::format_info("Confirm key: ")).map_err(|e| {
-        ErrorBuilder::new()
-            .error_message("Failed to read confirm key")
-            .debug_error(e)
-            .debug_mode(args.debug)
-            .build()
-    })?;
-
-    if key.ne(&confirm_key) {
-        return Err(ErrorBuilder::new()
-            .error_message("The two keys don't match")
-            .debug_mode(args.debug)
-            .build());
-    }
-
-    if key.len() < 1 {
-        return Err(ErrorBuilder::new()
-            .error_message("You must set a key")
-            .debug_mode(args.debug)
-            .build());
-    }
+    let key = logic::prompt_key(true)?;
 
     log::println_info("Encrypting...");
 
-    let crypto = Crypto::new(key);
-
-    let timer = time::SystemTime::now();
-
-    let success: Vec<PathBuf> = Vec::new();
-    let failures: Vec<PathBuf> = Vec::new();
-    let skips: Vec<PathBuf> = Vec::new();
-
-    for input_path in args.paths {
-        if input_path.is_dir() {
-            let walk_dir = WalkDir::new(&input_path);
-        } else if input_path.is_file() {
-        } else {
-        }
-    }
-
-    let elapsed = timer.elapsed().map_err(|e| {
+    let crypto = Crypto::new(key).map_err(|e| {
         ErrorBuilder::new()
-            .error_message("Failed to get elapsed time")
-            .debug_mode(args.debug)
+            .message("Failed to initialize encryption utils")
+            .error(e)
             .build()
     })?;
 
-    if !success.is_empty() {
-        log::println_success(format!(
-            "Encrypted {} files in {}",
-            success.len(),
-            human_duration(&elapsed)
-        ));
-        if args.debug {
-            success.iter().for_each(|msg| {
-                log::println_success(log::with_start_line(msg.to_str().unwrap(), "    "))
-            });
+    let timer = time::SystemTime::now();
+
+    let mut success: Vec<PathBuf> = Vec::new();
+    let mut failures: Vec<(PathBuf, Error)> = Vec::new();
+    let mut skips: Vec<(PathBuf, Error)> = Vec::new();
+
+    for input_path in &args.paths {
+        let output_path = match &args.output_path {
+            Some(p) => p.to_owned(),
+            None => logic::change_file_name(input_path, |n| [n, ".enc"].concat()),
+        };
+
+        logic::handle_already_existing_item(&output_path, args.overwrite)?;
+
+        if input_path.is_dir() {
+            let walk_dir = WalkDir::new(&input_path).iter().map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to read directory")
+                    .error(e)
+                    .build()
+            })?;
+
+            let threadpool = ThreadPool::new(8);
+            let (tx, rx) = channel();
+            let mut tries_nb = 0;
+
+            fs::create_dir(&output_path).map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to create output directory")
+                    .error(e)
+                    .build()
+            })?;
+
+            for dir_entry in walk_dir {
+                let entry = dir_entry.map_err(|e| {
+                    ErrorBuilder::new()
+                        .message("Failed to read directory entry")
+                        .error(e)
+                        .build()
+                })?;
+                let entry_path = entry.path();
+                let new_entry_path = output_path.join(Uuid::new_v4().to_string());
+
+                if entry_path.is_file() {
+                    tries_nb += 1;
+
+                    let crypto = crypto.clone();
+                    let tx = tx.clone();
+                    let entry_path = entry_path.clone();
+
+                    threadpool.execute(move || {
+                        let result =
+                            logic::encrypt_file(crypto, &entry_path, &new_entry_path, true);
+                        tx.send((entry_path.to_owned(), result)).unwrap();
+                    });
+                } else if !entry_path.is_dir() {
+                    skips.push((
+                        entry_path,
+                        ErrorBuilder::new().message("Unknown entry type").build(),
+                    ));
+                }
+            }
+
+            threadpool.join();
+            rx.iter()
+                .take(tries_nb)
+                .for_each(|(path, result)| match result {
+                    Ok(_) => success.push(path),
+                    Err(e) => failures.push((path, e)),
+                })
+        } else if input_path.is_file() {
+            match logic::encrypt_file(crypto.to_owned(), &input_path, &output_path, false) {
+                Ok(_) => success.push(input_path.to_owned()),
+                Err(e) => failures.push((input_path.to_owned(), e)),
+            };
+        } else {
+            skips.push((
+                input_path.to_owned(),
+                ErrorBuilder::new().message("Unknown entry type").build(),
+            ))
         }
     }
-    if !failures.is_empty() {
-        log::println_error(format!("Failed to encrypt {} files", failures.len()));
-        if args.debug {
-            failures.iter().for_each(|msg| {
-                log::println_error(log::with_start_line(msg.to_str().unwrap(), "    "))
-            });
-        }
-    }
-    if !skips.is_empty() {
-        log::println_info(format!(
-            "{} entr{} were skipped (unknown type)",
-            skips.len(),
-            if skips.len() == 1 { "y" } else { "ies" }
-        ));
-        if args.debug {
-            skips.iter().for_each(|msg| {
-                log::println_info(log::with_start_line(msg.to_str().unwrap(), "    "))
-            });
-        }
-    }
+
+    logic::log_stats(
+        success,
+        failures,
+        skips,
+        timer.elapsed().map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to get elapsed time")
+                .error(e)
+                .build()
+        })?,
+        args.debug,
+        logic::Command::Encrypt,
+    );
 
     Ok(())
 }

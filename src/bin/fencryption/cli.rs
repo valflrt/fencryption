@@ -15,7 +15,9 @@ struct Cli {
 }
 
 pub fn parse() {
-    if let Err(e) = commands::execute(Cli::parse().command) {
-        log::println_error(e.to_string());
+    let parser = Cli::parse();
+
+    if let Err(e) = commands::execute(parser.command) {
+        log::println_error(e.to_string(parser.debug));
     };
 }

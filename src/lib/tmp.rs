@@ -7,7 +7,7 @@ use std::{
 
 /// TmpDir is a struct to manipulate a temporary directory.
 ///
-/// The "path" argument (present in some methods) must be
+/// The `path` parameter (present in some methods) must be
 /// relative because it will be joined to the temporary
 /// directory path.
 ///

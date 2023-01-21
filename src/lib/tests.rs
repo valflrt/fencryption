@@ -34,14 +34,14 @@ fn get_original_data_after_encrypting_and_decrypting_file() {
 
     crypto
         .encrypt_stream(
-            tmp_dir.open_file("plain").unwrap(),
-            tmp_dir.create_file("enc").unwrap(),
+            &mut tmp_dir.open_file("plain").unwrap(),
+            &mut tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
     crypto
         .decrypt_stream(
-            tmp_dir.open_file("enc").unwrap(),
-            tmp_dir.create_file("dec").unwrap(),
+            &mut tmp_dir.open_file("enc").unwrap(),
+            &mut tmp_dir.create_file("dec").unwrap(),
         )
         .unwrap();
 
@@ -60,15 +60,15 @@ fn fail_to_decrypt_file_when_key_is_wrong() {
 
     crypto1
         .encrypt_stream(
-            tmp_dir.open_file("plain").unwrap(),
-            tmp_dir.create_file("enc").unwrap(),
+            &mut tmp_dir.open_file("plain").unwrap(),
+            &mut tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
 
     crypto2
         .decrypt_stream(
-            tmp_dir.open_file("enc").unwrap(),
-            tmp_dir.create_file("dec").unwrap(),
+            &mut tmp_dir.open_file("enc").unwrap(),
+            &mut tmp_dir.create_file("dec").unwrap(),
         )
         .unwrap();
 }

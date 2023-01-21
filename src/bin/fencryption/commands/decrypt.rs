@@ -1,12 +1,13 @@
-use std::path::PathBuf;
+use std::{fs, path::PathBuf, sync::mpsc::channel, time};
 
 use clap::{arg, Args};
-use human_duration::human_duration;
-use rpassword::prompt_password;
+use fencryption_lib::{crypto::Crypto, walk_dir::WalkDir};
+use threadpool::ThreadPool;
 
 use crate::{
-    executions::{self, ActionError, ActionResult},
-    log,
+    error::{Error, ErrorBuilder},
+    log, logic,
+    result::Result,
 };
 
 #[derive(Args, Clone)]
@@ -34,79 +35,114 @@ pub struct Command {
     pub debug: bool,
 }
 
-pub fn execute(args: &Command) -> ActionResult {
-    if args.paths.len() == 0 {
-        return Err(ActionError::new("You must provide at least one path"));
-    }
+pub fn execute(args: &Command) -> Result<()> {
+    logic::checks(&args.paths, &args.output_path)?;
 
-    if args.paths.iter().any(|p| !p.exists()) {
-        return Err(ActionError::new("One or more provided paths don't exist"));
-    }
-
-    if args.output_path.is_some() {
-        if args.paths.len() != 1 {
-            return Err(ActionError::new(
-                "Only one input path can be provided when setting an output path",
-            ));
-        }
-        if args.output_path.as_ref().unwrap().exists() {
-            return Err(ActionError::new(
-                "The specified custom output file/directory already exists, please remove it",
-            ));
-        }
-    }
-
-    let key = prompt_password(log::format_info("Enter key: "))
-        .map_err(|e| ActionError::new("Failed to read key").error(e))?;
-
-    if key.len() < 1 {
-        return Err(ActionError::new(
-            "The key cannot be less than 1 character long",
-        ));
-    }
+    let key = logic::prompt_key(false)?;
 
     log::println_info("Decrypting...");
 
-    let (elapsed, success, skipped, failed) = executions::decrypt(
-        args.paths.to_owned(),
-        args.output_path.to_owned(),
-        key,
-        args.overwrite,
-        args.delete_original,
-    )?;
+    let crypto = Crypto::new(key).map_err(|e| {
+        ErrorBuilder::new()
+            .message("Failed to initialize encryption utils")
+            .error(e)
+            .build()
+    })?;
 
-    if !success.is_empty() {
-        log::println_success(format!(
-            "Decrypted {} files in {}",
-            success.len(),
-            human_duration(&elapsed)
-        ));
-        if args.debug {
-            success.iter().for_each(|msg| {
-                log::println_success(log::with_start_line(msg.to_str().unwrap(), "    "))
-            });
+    let timer = time::SystemTime::now();
+
+    let mut success: Vec<PathBuf> = Vec::new();
+    let mut failures: Vec<(PathBuf, Error)> = Vec::new();
+    let mut skips: Vec<(PathBuf, Error)> = Vec::new();
+
+    for input_path in &args.paths {
+        let output_path = match &args.output_path {
+            Some(p) => p.to_owned(),
+            None => logic::change_file_name(input_path, |n| [n, ".dec"].concat()),
+        };
+
+        logic::handle_already_existing_item(&output_path, args.overwrite)?;
+
+        if input_path.is_dir() {
+            let walk_dir = WalkDir::new(&input_path).iter().map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to read directory")
+                    .error(e)
+                    .build()
+            })?;
+
+            let threadpool = ThreadPool::new(8);
+            let (tx, rx) = channel();
+            let mut tries_nb = 0;
+
+            fs::create_dir(&output_path).map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to create output directory")
+                    .error(e)
+                    .build()
+            })?;
+
+            for dir_entry in walk_dir {
+                let entry = dir_entry.map_err(|e| {
+                    ErrorBuilder::new()
+                        .message("Failed to read directory entry")
+                        .error(e)
+                        .build()
+                })?;
+                let entry_path = entry.path();
+
+                if entry_path.is_file() {
+                    tries_nb += 1;
+
+                    let crypto = crypto.clone();
+                    let tx = tx.clone();
+                    let entry_path = entry_path.clone();
+
+                    threadpool.execute(move || {
+                        let result = logic::decrypt_file(crypto, &entry_path, None);
+                        tx.send((entry_path.to_owned(), result)).unwrap();
+                    });
+                } else if !entry_path.is_dir() {
+                    skips.push((
+                        entry_path,
+                        ErrorBuilder::new().message("Unknown entry type").build(),
+                    ));
+                }
+            }
+
+            threadpool.join();
+            rx.iter()
+                .take(tries_nb)
+                .for_each(|(path, result)| match result {
+                    Ok(_) => success.push(path),
+                    Err(e) => failures.push((path, e)),
+                })
+        } else if input_path.is_file() {
+            match logic::decrypt_file(crypto.to_owned(), &input_path, Some(output_path)) {
+                Ok(_) => success.push(input_path.to_owned()),
+                Err(e) => failures.push((input_path.to_owned(), e)),
+            };
+        } else {
+            skips.push((
+                input_path.to_owned(),
+                ErrorBuilder::new().message("Unknown entry type").build(),
+            ))
         }
     }
-    if !failed.is_empty() {
-        log::println_error(format!("Failed to decrypt {} files", failed.len()));
-        if args.debug {
-            failed.iter().for_each(|msg| {
-                log::println_error(log::with_start_line(msg.to_str().unwrap(), "    "))
-            });
-        }
-    }
-    if !skipped.is_empty() {
-        log::println_info(format!(
-            "{} entr{} were skipped (unknown type)",
-            skipped.len(),
-            if skipped.len() == 1 { "y" } else { "ies" }
-        ));
-        if args.debug {
-            skipped.iter().for_each(|msg| {
-                log::println_info(log::with_start_line(msg.to_str().unwrap(), "    "))
-            });
-        }
-    }
+
+    logic::log_stats(
+        success,
+        failures,
+        skips,
+        timer.elapsed().map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to get elapsed time")
+                .error(e)
+                .build()
+        })?,
+        args.debug,
+        logic::Command::Decrypt,
+    );
 
     Ok(())
 }
