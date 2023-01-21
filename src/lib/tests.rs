@@ -26,9 +26,8 @@ fn fail_to_decrypt_data_when_key_is_wrong() {
 
 #[test]
 fn get_original_data_after_encrypting_and_decrypting_file() {
-    let crypto = Crypto::new(KEY).unwrap();
-
     let tmp_dir = TmpDir::new().unwrap();
+    let crypto = Crypto::new(KEY).unwrap();
 
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
 
@@ -51,10 +50,10 @@ fn get_original_data_after_encrypting_and_decrypting_file() {
 #[test]
 #[should_panic]
 fn fail_to_decrypt_file_when_key_is_wrong() {
+    let tmp_dir = TmpDir::new().unwrap();
+
     let crypto1 = Crypto::new(KEY).unwrap();
     let crypto2 = Crypto::new(&[KEY, b"nope"].concat()).unwrap();
-
-    let tmp_dir = TmpDir::new().unwrap();
 
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
 

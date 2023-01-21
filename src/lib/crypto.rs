@@ -113,27 +113,21 @@ impl Crypto {
     ///
     /// (See [`TmpDir`][crate::tmp::TmpDir])
     ///
-    /// ```rust
+    /// ```
     /// use fencryption_lib::crypto::Crypto;
     /// use fencryption_lib::tmp::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
     ///
+    /// let tmp_dir = TmpDir::new().unwrap();
     /// let crypto = Crypto::new(my_super_key).unwrap();
     ///
-    /// // Creates a temporary directory
-    /// let tmp_dir = TmpDir::new().unwrap();
+    /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
-    /// // tmp_dir.write_file is akin to std::fs::write
-    /// tmp_dir
-    ///     .write_file("plain", my_super_secret_message)
-    ///     .unwrap();
     /// crypto
     ///     .encrypt_stream(
-    ///         // tmp_dir.open_file is akin to std::fs::File::open
-    ///         &mut tmp_dir.open_file("plain").unwrap(),
-    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///         &mut tmp_dir.open_readable("plain").unwrap(),
     ///         &mut tmp_dir.create_file("enc").unwrap(),
     ///     )
     ///     .unwrap();
@@ -162,46 +156,38 @@ impl Crypto {
     ///
     /// (See [`TmpDir`][crate::tmp::TmpDir])
     ///
-    /// ```rust
+    /// ```
     /// use fencryption_lib::crypto::Crypto;
     /// use fencryption_lib::tmp::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
     ///
+    /// let tmp_dir = TmpDir::new().unwrap();
     /// let crypto = Crypto::new(my_super_key).unwrap();
     ///
-    /// // Creates a temporary directory
-    /// let tmp_dir = TmpDir::new().unwrap();
+    /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
-    /// // tmp_dir.write_file is akin to std::fs::write
-    /// tmp_dir
-    ///     .write_file("plain", my_super_secret_message)
-    ///     .unwrap();
     /// crypto
     ///     .encrypt_stream(
-    ///         // tmp_dir.open_file is akin to std::fs::File::open
-    ///         &mut tmp_dir.open_file("plain").unwrap(),
-    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///         &mut tmp_dir.open_readable("plain").unwrap(),
     ///         &mut tmp_dir.create_file("enc").unwrap(),
     ///     )
     ///     .unwrap();
-    ///
     /// crypto
     ///     .decrypt_stream(
-    ///         // tmp_dir.open_file is akin to std::fs::File::open
-    ///         &mut tmp_dir.open_file("enc").unwrap(),
-    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///         &mut tmp_dir.open_readable("enc").unwrap(),
     ///         &mut tmp_dir.create_file("dec").unwrap(),
     ///     )
     ///     .unwrap();
     ///
-    /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message);
+    /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message[..]);
     /// ```
     pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
         const CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
         let mut buffer = [0u8; CHUNK_LEN];
 
+        // TODO Add a callback with a percentage of the encryption available
         // let file_len = source.metadata().map_err(|e| ErrorKind::Io(e))?;
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;

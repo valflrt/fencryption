@@ -68,8 +68,8 @@ impl TmpDir {
         fs::create_dir_all(self.0.join(path))
     }
 
-    /// Creates a file in the temporary directory. See
-    /// [`File::create`].
+    /// Creates a file in the temporary directory and opens
+    /// it in write-only mode. See [`File::create`].
     pub fn create_file<P>(&self, path: P) -> io::Result<File>
     where
         P: AsRef<Path>,
