@@ -25,7 +25,9 @@
 
 Fencryption is program to encrypt and decrypt files and full directories. Note that this project is at an early stage of development.
 
-**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.** _This is not supposed to be used in "real conditions" anyway_
+**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.**
+
+> This program is not supposed to be used in "real conditions" because it is mere personal project. Although I think above v2 the commands encrypt and decrypt should be pretty safe.
 
 ## Usage
 
