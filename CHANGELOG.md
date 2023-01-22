@@ -1,6 +1,6 @@
 # Changelog
 
-## `v0.1.9`
+## `v0.1.10`
 
 - Add packing features
   - Command `pack` and `unpack`
@@ -9,7 +9,7 @@
 - Key is no more asked as an argument (so it is now saved in history)
 - Better log
 
-## `v0.1.6`
+## `v0.1.6` (beta)
 
 - Add multithreading for directory encryption (speed goes brrr)
 - Switch from chacha20poly1305 to aes_gcm
@@ -19,7 +19,7 @@
 - Encrypted directory still keeps original directory structure
 - Misc fixes
 
-## `v0.1.4`
+## `v0.1.4` (beta)
 
 - Base features (encrypting/decrypting) and commands (encrypt/decrypt)
 - No pretty error display (system error message)
