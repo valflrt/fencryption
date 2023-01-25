@@ -7,7 +7,7 @@ use std::{
 use crate::{
     constants::DEFAULT_CHUNK_LEN,
     file_header::{self, FileHeader, HEADER_LEN},
-    stream::stream,
+    io::stream,
     walk_dir::{self, WalkDir},
 };
 

@@ -132,7 +132,11 @@ impl Crypto {
     ///     )
     ///     .unwrap();
     /// ```
-    pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
+    pub fn encrypt_stream(
+        &self,
+        source: &mut impl Read,
+        dest: &mut impl Write,
+    ) -> Result<(), ErrorKind> {
         const CHUNK_LEN: usize = DEFAULT_CHUNK_LEN;
         let mut buffer = [0u8; CHUNK_LEN];
 
@@ -183,7 +187,11 @@ impl Crypto {
     ///
     /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message[..]);
     /// ```
-    pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
+    pub fn decrypt_stream(
+        &self,
+        source: &mut impl Read,
+        dest: &mut impl Write,
+    ) -> Result<(), ErrorKind> {
         const CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
         let mut buffer = [0u8; CHUNK_LEN];
 
