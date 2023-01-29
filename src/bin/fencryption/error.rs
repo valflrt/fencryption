@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Error {
     error_message: String,
     debug_message: String,
@@ -8,11 +9,9 @@ impl Error {
         format!(
             "Error: {}{}",
             self.error_message,
-            if debug_mode {
-                format!("\n{}", self.debug_message)
-            } else {
-                String::new()
-            }
+            debug_mode
+                .then_some(format!("\n{}", self.debug_message))
+                .unwrap_or("".to_string())
         )
     }
 }

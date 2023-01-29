@@ -32,13 +32,13 @@ fn get_original_data_after_encrypting_and_decrypting_file() {
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
 
     crypto
-        .encrypt_stream(
+        .encrypt_io(
             &mut tmp_dir.open_readable("plain").unwrap(),
             &mut tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
     crypto
-        .decrypt_stream(
+        .decrypt_io(
             &mut tmp_dir.open_readable("enc").unwrap(),
             &mut tmp_dir.create_file("dec").unwrap(),
         )
@@ -58,14 +58,14 @@ fn fail_to_decrypt_file_when_key_is_wrong() {
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
 
     crypto1
-        .encrypt_stream(
+        .encrypt_io(
             &mut tmp_dir.open_readable("plain").unwrap(),
             &mut tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
 
     crypto2
-        .decrypt_stream(
+        .decrypt_io(
             &mut tmp_dir.open_readable("enc").unwrap(),
             &mut tmp_dir.create_file("dec").unwrap(),
         )

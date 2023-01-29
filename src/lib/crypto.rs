@@ -1,10 +1,7 @@
 use aes_gcm::{aead::Aead, aes::cipher::InvalidLength, Aes256Gcm, KeyInit, Nonce};
 use rand::{rngs::OsRng, RngCore};
 use sha2::{Digest, Sha256};
-use std::{
-    fs::File,
-    io::{self, Read, Write},
-};
+use std::io::{self, Read, Write};
 
 use crate::constants::DEFAULT_CHUNK_LEN;
 
@@ -12,6 +9,10 @@ use crate::constants::DEFAULT_CHUNK_LEN;
 const IV_LEN: usize = 96 / 8; // 12
 /// Default authentication tag length
 const TAG_LEN: usize = 128 / 8; // 16
+/// Encryption chunk length: plaintext (128kb)
+pub const ENC_CHUNK_LEN: usize = DEFAULT_CHUNK_LEN;
+/// Decryption chunk length: iv (12) + ciphertext (128kb) + auth tag (16)
+pub const DEC_CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN;
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -126,26 +127,25 @@ impl Crypto {
     /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
     /// crypto
-    ///     .encrypt_stream(
+    ///     .encrypt_io(
     ///         &mut tmp_dir.open_readable("plain").unwrap(),
     ///         &mut tmp_dir.create_file("enc").unwrap(),
     ///     )
     ///     .unwrap();
     /// ```
-    pub fn encrypt_stream(
+    pub fn encrypt_io(
         &self,
         source: &mut impl Read,
         dest: &mut impl Write,
     ) -> Result<(), ErrorKind> {
-        const CHUNK_LEN: usize = DEFAULT_CHUNK_LEN;
-        let mut buffer = [0u8; CHUNK_LEN];
+        let mut buffer = [0u8; ENC_CHUNK_LEN];
 
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
             dest.write(&self.encrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
             // Stops when the loop reached the end of the file
-            if read_len != CHUNK_LEN {
+            if read_len != ENC_CHUNK_LEN {
                 break;
             }
         }
@@ -173,13 +173,13 @@ impl Crypto {
     /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
     /// crypto
-    ///     .encrypt_stream(
+    ///     .encrypt_io(
     ///         &mut tmp_dir.open_readable("plain").unwrap(),
     ///         &mut tmp_dir.create_file("enc").unwrap(),
     ///     )
     ///     .unwrap();
     /// crypto
-    ///     .decrypt_stream(
+    ///     .decrypt_io(
     ///         &mut tmp_dir.open_readable("enc").unwrap(),
     ///         &mut tmp_dir.create_file("dec").unwrap(),
     ///     )
@@ -187,13 +187,12 @@ impl Crypto {
     ///
     /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message[..]);
     /// ```
-    pub fn decrypt_stream(
+    pub fn decrypt_io(
         &self,
         source: &mut impl Read,
         dest: &mut impl Write,
     ) -> Result<(), ErrorKind> {
-        const CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
-        let mut buffer = [0u8; CHUNK_LEN];
+        let mut buffer = [0u8; DEC_CHUNK_LEN];
 
         // TODO Add a callback with a percentage of the encryption available
         // let file_len = source.metadata().map_err(|e| ErrorKind::Io(e))?;
@@ -202,7 +201,7 @@ impl Crypto {
             dest.write(&self.decrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
             // Stops when the loop reached the end of the file.
-            if read_len != CHUNK_LEN {
+            if read_len != DEC_CHUNK_LEN {
                 break;
             }
         }

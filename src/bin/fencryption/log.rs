@@ -1,4 +1,4 @@
-use std::io::{self, stdin, stdout, Write};
+// use std::io::{self, stdin, stdout, Write};
 
 use colored::Colorize;
 
@@ -101,13 +101,13 @@ where
     println!("{}", format_warn(message))
 }
 
-pub fn prompt<M>(message: M) -> io::Result<String>
-where
-    M: AsRef<str>,
-{
-    print!("{}", format_info(message));
-    stdout().flush()?;
-    let mut out = String::new();
-    stdin().read_line(&mut out)?;
-    Ok(out)
-}
+// pub fn prompt<M>(message: M) -> io::Result<String>
+// where
+//     M: AsRef<str>,
+// {
+//     print!("{}", format_info(message));
+//     stdout().flush()?;
+//     let mut out = String::new();
+//     stdin().read_line(&mut out)?;
+//     Ok(out)
+// }

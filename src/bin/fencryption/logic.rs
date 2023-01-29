@@ -1,11 +1,11 @@
 use std::{
     fs::{self, OpenOptions},
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     time::Duration,
 };
 
-use fencryption_lib::{crypto::Crypto, metadata, stream::stream, tmp::TmpFile};
+use fencryption_lib::{crypto::Crypto, metadata};
 use human_duration::human_duration;
 use rpassword::prompt_password;
 
@@ -18,27 +18,32 @@ use crate::{
 pub enum Command {
     Encrypt,
     Decrypt,
-    Pack,
-    Unpack,
+    // Pack,
+    // Unpack,
 }
 
-pub fn checks<P>(paths: P, output_path: &Option<PathBuf>) -> Result<()>
+pub enum OutputDecPath {
+    Direct(PathBuf),
+    Parent(PathBuf),
+}
+
+pub fn checks<P>(input_paths: P, output_path: &Option<PathBuf>) -> Result<()>
 where
     P: AsRef<Vec<PathBuf>>,
 {
-    if paths.as_ref().len() == 0 {
+    if input_paths.as_ref().len() == 0 {
         return Err(ErrorBuilder::new()
             .message("Please provide at least one path")
             .build());
     }
 
-    if paths.as_ref().iter().any(|p| !p.exists()) {
+    if input_paths.as_ref().iter().any(|p| !p.exists()) {
         return Err(ErrorBuilder::new()
             .message("I can't work with files that don't exist")
             .build());
     }
 
-    if output_path.as_ref().is_some() && paths.as_ref().len() != 1 {
+    if output_path.as_ref().is_some() && input_paths.as_ref().len() != 1 {
         return Err(ErrorBuilder::new()
             .debug_message("Only one input path can be provided when setting an output path")
             .build());
@@ -99,26 +104,42 @@ where
     path
 }
 
-pub fn handle_already_existing_item<P>(path: P, overwrite: bool) -> Result<()>
+pub fn get_output_paths(
+    paths: &Vec<PathBuf>,
+    output_path: &Option<PathBuf>,
+    command: Command,
+) -> Vec<PathBuf> {
+    paths
+        .iter()
+        .map(|p| match output_path {
+            Some(p) => p.to_owned(),
+            None => change_file_name(p, |s| match command {
+                Command::Encrypt => [s, ".enc"].concat(),
+                Command::Decrypt => {
+                    if s.ends_with(".enc") {
+                        s.replace(".enc", ".dec")
+                    } else {
+                        [s, ".dec"].concat()
+                    }
+                } // _ => panic!(),
+            }),
+        })
+        .collect::<Vec<PathBuf>>()
+}
+
+pub fn overwrite<P>(paths: P, overwrite: bool) -> Result<()>
 where
-    P: AsRef<Path>,
+    P: AsRef<[PathBuf]>,
 {
-    if path.as_ref().exists() {
+    if paths.as_ref().iter().any(|p| p.exists()) {
         if overwrite {
-            if path.as_ref().is_dir() {
-                fs::remove_dir_all(path.as_ref()).map_err(|e| {
+            for path in paths.as_ref() {
+                delete_entry(&path).map_err(|e| {
                     ErrorBuilder::new()
-                        .message("Failed to overwrite directory, please do it yourself")
+                        .message("Failed to overwrite file/directory, please do it yourself")
                         .error(e)
                         .build()
-                })?;
-            } else if path.as_ref().is_file() {
-                fs::remove_file(path.as_ref()).map_err(|e| {
-                    ErrorBuilder::new()
-                        .message("Failed to overwrite file, please do it yourself")
-                        .error(e)
-                        .build()
-                })?;
+                })?
             }
         } else {
             return Err(ErrorBuilder::new()
@@ -126,6 +147,46 @@ where
                 .build());
         }
     };
+
+    Ok(())
+}
+
+pub fn delete_original<P>(path: P, delete_original: bool) -> Result<()>
+where
+    P: AsRef<Path>,
+{
+    if delete_original && path.as_ref().exists() {
+        delete_entry(path.as_ref()).map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to delete original file/directory, please do it yourself")
+                .error(e)
+                .build()
+        })?;
+    }
+
+    Ok(())
+}
+
+pub fn delete_entry<P>(path: P) -> Result<()>
+where
+    P: AsRef<Path>,
+{
+    if path.as_ref().is_dir() {
+        fs::remove_dir_all(path.as_ref()).map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to remove directory, please do it yourself")
+                .error(e)
+                .build()
+        })?;
+    } else if path.as_ref().is_file() {
+        fs::remove_file(path.as_ref()).map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to remove file, please do it yourself")
+                .error(e)
+                .build()
+        })?;
+    }
+
     Ok(())
 }
 
@@ -135,24 +196,17 @@ where
 /// of the file.
 pub fn encrypt_file<P1, P2>(
     crypto: Crypto,
-    path: P1,
+    input_path: P1,
     output_path: P2,
-    with_metadata: bool,
+    relative_path: Option<PathBuf>,
 ) -> Result<()>
 where
     P1: AsRef<Path>,
     P2: AsRef<Path>,
 {
-    let tmp_file = TmpFile::new().map_err(|e| {
-        ErrorBuilder::new()
-            .message("Failed to create temporary file")
-            .error(e)
-            .build()
-    })?;
-
     let mut source = OpenOptions::new()
         .read(true)
-        .open(path.as_ref())
+        .open(&input_path)
         .map_err(|e| {
             ErrorBuilder::new()
                 .message("Failed to read source file")
@@ -160,50 +214,10 @@ where
                 .build()
         })?;
 
-    let mut dest = tmp_file
-        .open_with_opts(OpenOptions::new().write(true))
-        .map_err(|e| {
-            ErrorBuilder::new()
-                .message("Failed to open temporary file")
-                .error(e)
-                .build()
-        })?;
-
-    if with_metadata {
-        dest.write_all(
-            &metadata::encode(metadata_structs::FileMetadata::new(&path)).map_err(|e| {
-                ErrorBuilder::new()
-                    .message("Failed to encode file metadata")
-                    .error(e)
-                    .build()
-            })?,
-        )
-        .map_err(|e| {
-            ErrorBuilder::new()
-                .message("Failed to write file metadata")
-                .error(e)
-                .build()
-        })?;
-    }
-
-    stream(&mut source, &mut dest).map_err(|e| {
-        ErrorBuilder::new()
-            .message("Failed to transfer data from original to temporary file")
-            .error(e)
-            .build()
-    })?;
-
-    let mut source = tmp_file.open_writable().map_err(|e| {
-        ErrorBuilder::new()
-            .message("Failed to read temporary file")
-            .error(e)
-            .build()
-    })?;
-
     let mut dest = OpenOptions::new()
         .write(true)
         .create(true)
-        .open(output_path.as_ref())
+        .open(&output_path)
         .map_err(|e| {
             ErrorBuilder::new()
                 .message("Failed to open/create destination file")
@@ -211,9 +225,39 @@ where
                 .build()
         })?;
 
-    crypto.encrypt_stream(&mut source, &mut dest).map_err(|e| {
+    if let Some(p) = relative_path {
+        let metadata = metadata::encode(metadata_structs::FileMetadata::new(p)).map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to encode file metadata")
+                .error(e)
+                .build()
+        })?;
+
+        let encrypted_metadata = crypto.encrypt(metadata).map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to encrypt metadata")
+                .error(e)
+                .build()
+        })?;
+
+        dest.write_all(
+            &[
+                (encrypted_metadata.len() as u16).to_be_bytes().as_ref(),
+                encrypted_metadata.as_ref(),
+            ]
+            .concat(),
+        )
+        .map_err(|e| {
+            ErrorBuilder::new()
+                .message("Failed to write metadata")
+                .error(e)
+                .build()
+        })?;
+    };
+
+    crypto.encrypt_io(&mut source, &mut dest).map_err(|e| {
         ErrorBuilder::new()
-            .message("Failed to encrypt")
+            .message("Failed to encrypt file")
             .error(e)
             .build()
     })?;
@@ -225,20 +269,13 @@ where
 ///
 /// If output_path is None, the function will try to extract
 /// metadata from the file.
-pub fn decrypt_file<P1>(crypto: Crypto, path: P1, output_path: Option<PathBuf>) -> Result<()>
+pub fn decrypt_file<P>(crypto: Crypto, input_path: P, output_path: OutputDecPath) -> Result<()>
 where
-    P1: AsRef<Path>,
+    P: AsRef<Path>,
 {
-    let tmp_file = TmpFile::new().map_err(|e| {
-        ErrorBuilder::new()
-            .message("Failed to create temporary file")
-            .error(e)
-            .build()
-    })?;
-
     let mut source = OpenOptions::new()
         .read(true)
-        .open(path.as_ref())
+        .open(&input_path)
         .map_err(|e| {
             ErrorBuilder::new()
                 .message("Failed to read source file")
@@ -246,44 +283,56 @@ where
                 .build()
         })?;
 
-    let mut dest = tmp_file
-        .open_with_opts(OpenOptions::new().write(true))
-        .map_err(|e| {
-            ErrorBuilder::new()
-                .message("Failed to open temporary file")
-                .error(e)
-                .build()
-        })?;
+    let output_path = match output_path {
+        OutputDecPath::Direct(p) => p,
+        OutputDecPath::Parent(p) => {
+            let mut len_bytes = [0u8; 2];
+            source.read_exact(&mut len_bytes).map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to get encrypted metadata length")
+                    .error(e)
+                    .build()
+            })?;
+            let len = u16::from_be_bytes(len_bytes) as usize;
+            let mut metadata_bytes = vec![0u8; len];
+            source.read_exact(&mut metadata_bytes).map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to get encrypted metadata")
+                    .error(e)
+                    .build()
+            })?;
+            let metadata = metadata::decode::<metadata_structs::FileMetadata>(
+                &crypto.decrypt(&metadata_bytes).map_err(|e| {
+                    ErrorBuilder::new()
+                        .message("Failed to decrypt metadata")
+                        .error(e)
+                        .build()
+                })?,
+            )
+            .map_err(|e| {
+                ErrorBuilder::new()
+                    .message("Failed to decode metadata")
+                    .error(e)
+                    .build()
+            })?;
 
-    crypto.decrypt_stream(&mut source, &mut dest).map_err(|e| {
-        ErrorBuilder::new()
-            .message("Failed to decrypt")
-            .error(e)
-            .build()
-    })?;
-
-    let mut source = tmp_file.open_writable().map_err(|e| {
-        ErrorBuilder::new()
-            .message("Failed to read temporary file")
-            .error(e)
-            .build()
-    })?;
+            let path = p.join(metadata.path());
+            if let Some(p) = path.parent() {
+                fs::create_dir_all(p).map_err(|e| {
+                    ErrorBuilder::new()
+                        .message("Failed to create sub-directory")
+                        .error(e)
+                        .build()
+                })?
+            };
+            path
+        }
+    };
 
     let mut dest = OpenOptions::new()
         .write(true)
         .create(true)
-        .open(
-            output_path.unwrap_or(
-                metadata::get_metadata::<metadata_structs::FileMetadata>(&mut source)
-                    .map_err(|e| {
-                        ErrorBuilder::new()
-                            .message("Failed to get file metadata")
-                            .error(e)
-                            .build()
-                    })?
-                    .path(),
-            ),
-        )
+        .open(&output_path)
         .map_err(|e| {
             ErrorBuilder::new()
                 .message("Failed to open/create destination file")
@@ -291,9 +340,9 @@ where
                 .build()
         })?;
 
-    stream(&mut source, &mut dest).map_err(|e| {
+    crypto.decrypt_io(&mut source, &mut dest).map_err(|e| {
         ErrorBuilder::new()
-            .message("Failed to transfer data from temporary to decrypted file")
+            .message("Failed to decrypt")
             .error(e)
             .build()
     })?;
@@ -315,7 +364,7 @@ pub fn log_stats(
             match command {
                 Command::Encrypt => "Encrypted",
                 Command::Decrypt => "Decrypted",
-                _ => panic!(),
+                // _ => panic!(),
             },
             success.len(),
             if success.len() == 1 { "" } else { "s" },
@@ -333,7 +382,7 @@ pub fn log_stats(
             match command {
                 Command::Encrypt => "encrypt",
                 Command::Decrypt => "decrypt",
-                _ => panic!(),
+                // _ => panic!(),
             },
             failures.len(),
             if failures.len() == 1 { "" } else { "s" }
