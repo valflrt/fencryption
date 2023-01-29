@@ -5,7 +5,10 @@ use std::{
     time::Duration,
 };
 
-use fencryption_lib::{crypto::Crypto, metadata};
+use fencryption_lib::{
+    crypto::{self, Crypto},
+    metadata,
+};
 use human_duration::human_duration;
 use rpassword::prompt_password;
 
@@ -257,7 +260,10 @@ where
 
     crypto.encrypt_io(&mut source, &mut dest).map_err(|e| {
         ErrorBuilder::new()
-            .message("Failed to encrypt file")
+            .message(match e {
+                crypto::ErrorKind::AesError(_) => "Failed to encrypt file (key must be wrong)",
+                _ => "Failed to encrypt file",
+            })
             .error(e)
             .build()
     })?;
@@ -342,7 +348,10 @@ where
 
     crypto.decrypt_io(&mut source, &mut dest).map_err(|e| {
         ErrorBuilder::new()
-            .message("Failed to decrypt")
+            .message(match e {
+                crypto::ErrorKind::AesError(_) => "Failed to decrypt file (key must be wrong)",
+                _ => "Failed to decrypt file",
+            })
             .error(e)
             .build()
     })?;
