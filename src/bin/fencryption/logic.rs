@@ -45,7 +45,7 @@ where
 
     if output_path.as_ref().is_some() && input_paths.as_ref().len() != 1 {
         return Err(ErrorBuilder::new()
-            .debug_message("Only one input path can be provided when setting an output path")
+            .message("Only one input path can be provided when setting an output path")
             .build());
     }
 
