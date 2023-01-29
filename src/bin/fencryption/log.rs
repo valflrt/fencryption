@@ -1,11 +1,12 @@
-use std::io::{self, stdin, stdout, Write};
+// use std::io::{self, stdin, stdout, Write};
 
 use colored::Colorize;
 
 enum LogKind {
-    Info,
     Success,
     Error,
+    Warn,
+    Info,
 }
 
 /// Adds a "start line pattern" at the start of every line in
@@ -32,9 +33,10 @@ where
         with_start_line(
             message,
             match kind {
-                LogKind::Info => " ".on_white(),
                 LogKind::Success => " ".on_bright_green(),
                 LogKind::Error => " ".on_bright_red(),
+                LogKind::Warn => " ".on_bright_yellow(),
+                LogKind::Info => " ".on_white(),
             }
             .to_string(),
         )
@@ -85,13 +87,27 @@ where
     println!("{}", format_error(message))
 }
 
-pub fn prompt<M>(message: M) -> io::Result<String>
+pub fn format_warn<M>(message: M) -> String
 where
     M: AsRef<str>,
 {
-    print!("{}", format_info(message));
-    stdout().flush()?;
-    let mut out = String::new();
-    stdin().read_line(&mut out)?;
-    Ok(out)
+    format_message(message, LogKind::Warn)
 }
+
+pub fn println_warn<M>(message: M)
+where
+    M: AsRef<str>,
+{
+    println!("{}", format_warn(message))
+}
+
+// pub fn prompt<M>(message: M) -> io::Result<String>
+// where
+//     M: AsRef<str>,
+// {
+//     print!("{}", format_info(message));
+//     stdout().flush()?;
+//     let mut out = String::new();
+//     stdin().read_line(&mut out)?;
+//     Ok(out)
+// }

@@ -15,11 +15,11 @@
 pub mod constants;
 pub mod crypto;
 pub mod file_header;
+pub mod io;
 pub mod metadata;
 pub mod pack;
 pub mod tmp;
 pub mod walk_dir;
 
 #[cfg(test)]
-mod lib_tests;
-pub mod stream;
+mod tests;

@@ -1,17 +1,18 @@
 use aes_gcm::{aead::Aead, aes::cipher::InvalidLength, Aes256Gcm, KeyInit, Nonce};
 use rand::{rngs::OsRng, RngCore};
-use ring::digest;
-use std::{
-    fs::File,
-    io::{self, Read, Write},
-};
+use sha2::{Digest, Sha256};
+use std::io::{self, Read, Write};
 
-use crate::constants::DEFAULT_BUF_LEN;
+use crate::constants::DEFAULT_CHUNK_LEN;
 
 /// Default initialization vector length
 const IV_LEN: usize = 96 / 8; // 12
 /// Default authentication tag length
 const TAG_LEN: usize = 128 / 8; // 16
+/// Encryption chunk length: plaintext (128kb)
+pub const ENC_CHUNK_LEN: usize = DEFAULT_CHUNK_LEN;
+/// Decryption chunk length: iv (12) + ciphertext (128kb) + auth tag (16)
+pub const DEC_CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN;
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -33,14 +34,14 @@ impl Crypto {
     where
         K: AsRef<[u8]>,
     {
+        let key = hash_key(key.as_ref());
         Ok(Crypto {
-            cipher: Aes256Gcm::new_from_slice(&hash_key(key.as_ref()))
-                .map_err(|e| ErrorKind::InvalidKeyLength(e))?,
+            cipher: Aes256Gcm::new_from_slice(&key).map_err(|e| ErrorKind::InvalidKeyLength(e))?,
         })
     }
 
     /// Basic function to encrypt.
-    pub fn encrypt_with_nonce(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn encrypt_with_iv(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         Ok(self
             .cipher
             .encrypt(Nonce::from_slice(iv), plaintext)
@@ -48,7 +49,7 @@ impl Crypto {
     }
 
     /// Basic function to decrypt.
-    pub fn decrypt_with_nonce(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn decrypt_with_iv(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         Ok(self
             .cipher
             .decrypt(Nonce::from_slice(iv), ciphertext)
@@ -75,8 +76,8 @@ impl Crypto {
     where
         P: AsRef<[u8]>,
     {
-        let iv = &random_iv();
-        Ok([iv, self.encrypt_with_nonce(plain.as_ref(), iv)?.as_slice()].concat())
+        let iv = random_iv();
+        Ok([&iv, self.encrypt_with_iv(plain.as_ref(), &iv)?.as_slice()].concat())
     }
 
     /// Decrypt a small piece of data.
@@ -103,7 +104,7 @@ impl Crypto {
         let iv = &enc.as_ref()[..IV_LEN];
         let ciphertext = &enc.as_ref()[IV_LEN..];
 
-        self.decrypt_with_nonce(ciphertext, iv)
+        self.decrypt_with_iv(ciphertext, iv)
     }
 
     /// Encrypt a stream from a source and a destination
@@ -113,47 +114,38 @@ impl Crypto {
     ///
     /// (See [`TmpDir`][crate::tmp::TmpDir])
     ///
-    /// ```rust
+    /// ```
     /// use fencryption_lib::crypto::Crypto;
     /// use fencryption_lib::tmp::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
     ///
+    /// let tmp_dir = TmpDir::new().unwrap();
     /// let crypto = Crypto::new(my_super_key).unwrap();
     ///
-    /// // Creates a temporary directory
-    /// let tmp_dir = TmpDir::new().unwrap();
+    /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
-    /// // tmp_dir.write_file is akin to std::fs::write
-    /// tmp_dir
-    ///     .write_file("plain", my_super_secret_message)
-    ///     .unwrap();
     /// crypto
-    ///     .encrypt_stream(
-    ///         // tmp_dir.open_file is akin to std::fs::File::open
-    ///         &mut tmp_dir.open_file("plain").unwrap(),
-    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///     .encrypt_io(
+    ///         &mut tmp_dir.open_readable("plain").unwrap(),
     ///         &mut tmp_dir.create_file("enc").unwrap(),
     ///     )
     ///     .unwrap();
     /// ```
-    pub fn encrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
-        let iv = random_iv();
-
-        const BUFFER_LEN: usize = DEFAULT_BUF_LEN;
-        let mut buffer = [0u8; BUFFER_LEN];
-
-        dest.write_all(&iv).map_err(|e| ErrorKind::Io(e))?;
+    pub fn encrypt_io(
+        &self,
+        source: &mut impl Read,
+        dest: &mut impl Write,
+    ) -> Result<(), ErrorKind> {
+        let mut buffer = [0u8; ENC_CHUNK_LEN];
 
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-
-            dest.write(&self.encrypt_with_nonce(&buffer[..read_len], &iv)?)
+            dest.write(&self.encrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
-
             // Stops when the loop reached the end of the file
-            if read_len != BUFFER_LEN {
+            if read_len != ENC_CHUNK_LEN {
                 break;
             }
         }
@@ -168,57 +160,48 @@ impl Crypto {
     ///
     /// (See [`TmpDir`][crate::tmp::TmpDir])
     ///
-    /// ```rust
+    /// ```
     /// use fencryption_lib::crypto::Crypto;
     /// use fencryption_lib::tmp::TmpDir;
     ///
     /// let my_super_key = b"this_is_super_secure";
     /// let my_super_secret_message = b"hello :)";
     ///
+    /// let tmp_dir = TmpDir::new().unwrap();
     /// let crypto = Crypto::new(my_super_key).unwrap();
     ///
-    /// // Creates a temporary directory
-    /// let tmp_dir = TmpDir::new().unwrap();
+    /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
-    /// // tmp_dir.write_file is akin to std::fs::write
-    /// tmp_dir
-    ///     .write_file("plain", my_super_secret_message)
-    ///     .unwrap();
     /// crypto
-    ///     .encrypt_stream(
-    ///         // tmp_dir.open_file is akin to std::fs::File::open
-    ///         &mut tmp_dir.open_file("plain").unwrap(),
-    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///     .encrypt_io(
+    ///         &mut tmp_dir.open_readable("plain").unwrap(),
     ///         &mut tmp_dir.create_file("enc").unwrap(),
     ///     )
     ///     .unwrap();
-    ///
     /// crypto
-    ///     .decrypt_stream(
-    ///         // tmp_dir.open_file is akin to std::fs::File::open
-    ///         &mut tmp_dir.open_file("enc").unwrap(),
-    ///         // tmp_dir.create_file is akin to std::fs::File::create
+    ///     .decrypt_io(
+    ///         &mut tmp_dir.open_readable("enc").unwrap(),
     ///         &mut tmp_dir.create_file("dec").unwrap(),
     ///     )
     ///     .unwrap();
     ///
-    /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message);
+    /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message[..]);
     /// ```
-    pub fn decrypt_stream(&self, source: &mut File, dest: &mut File) -> Result<(), ErrorKind> {
-        const BUFFER_LEN: usize = DEFAULT_BUF_LEN + TAG_LEN; // ciphertext (500) + auth tag (16)
-        let mut buffer = [0u8; BUFFER_LEN];
+    pub fn decrypt_io(
+        &self,
+        source: &mut impl Read,
+        dest: &mut impl Write,
+    ) -> Result<(), ErrorKind> {
+        let mut buffer = [0u8; DEC_CHUNK_LEN];
 
-        let mut iv = [0u8; IV_LEN];
-        source.read_exact(&mut iv).map_err(|e| ErrorKind::Io(e))?;
-
+        // TODO Add a callback with a percentage of the encryption available
+        // let file_len = source.metadata().map_err(|e| ErrorKind::Io(e))?;
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-
-            dest.write(&self.decrypt_with_nonce(&buffer[..read_len], &iv)?)
+            dest.write(&self.decrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
-
             // Stops when the loop reached the end of the file.
-            if read_len != BUFFER_LEN {
+            if read_len != DEC_CHUNK_LEN {
                 break;
             }
         }
@@ -231,9 +214,9 @@ fn hash_key<K>(key: K) -> Vec<u8>
 where
     K: AsRef<[u8]>,
 {
-    digest::digest(&digest::SHA256, key.as_ref())
-        .as_ref()
-        .to_owned()
+    let mut hasher = Sha256::new();
+    hasher.update(key.as_ref());
+    hasher.finalize().to_vec()
 }
 
 fn random_iv() -> Vec<u8> {

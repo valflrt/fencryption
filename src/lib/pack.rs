@@ -5,9 +5,9 @@ use std::{
 };
 
 use crate::{
-    constants::DEFAULT_BUF_LEN,
+    constants::DEFAULT_CHUNK_LEN,
     file_header::{self, FileHeader, HEADER_LEN},
-    stream::stream,
+    io::stream,
     walk_dir::{self, WalkDir},
 };
 
@@ -127,14 +127,14 @@ impl Pack {
 
             // Gets the number of chunks to read before reaching
             // the last bytes.
-            let chunks = header.file_len().div_euclid(DEFAULT_BUF_LEN as u64);
+            let chunks = header.file_len().div_euclid(DEFAULT_CHUNK_LEN as u64);
             // Gets the number of the remaining bytes (after
             // reading all chunks).
-            let rem_len = header.file_len().rem_euclid(DEFAULT_BUF_LEN as u64) as usize;
+            let rem_len = header.file_len().rem_euclid(DEFAULT_CHUNK_LEN as u64) as usize;
 
             // Reads all chunks and writes them to the output
             // file.
-            let mut buffer = [0u8; DEFAULT_BUF_LEN];
+            let mut buffer = [0u8; DEFAULT_CHUNK_LEN];
             for _ in 0..chunks {
                 pack_file
                     .read_exact(&mut buffer)

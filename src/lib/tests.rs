@@ -26,21 +26,20 @@ fn fail_to_decrypt_data_when_key_is_wrong() {
 
 #[test]
 fn get_original_data_after_encrypting_and_decrypting_file() {
+    let tmp_dir = TmpDir::new().unwrap();
     let crypto = Crypto::new(KEY).unwrap();
 
-    let tmp_dir = TmpDir::new().unwrap();
-
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
+
     crypto
-        .encrypt_stream(
-            &mut tmp_dir.open_file("plain").unwrap(),
+        .encrypt_io(
+            &mut tmp_dir.open_readable("plain").unwrap(),
             &mut tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
-
     crypto
-        .decrypt_stream(
-            &mut tmp_dir.open_file("enc").unwrap(),
+        .decrypt_io(
+            &mut tmp_dir.open_readable("enc").unwrap(),
             &mut tmp_dir.create_file("dec").unwrap(),
         )
         .unwrap();
@@ -51,22 +50,23 @@ fn get_original_data_after_encrypting_and_decrypting_file() {
 #[test]
 #[should_panic]
 fn fail_to_decrypt_file_when_key_is_wrong() {
+    let tmp_dir = TmpDir::new().unwrap();
+
     let crypto1 = Crypto::new(KEY).unwrap();
     let crypto2 = Crypto::new(&[KEY, b"nope"].concat()).unwrap();
 
-    let tmp_dir = TmpDir::new().unwrap();
-
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
+
     crypto1
-        .encrypt_stream(
-            &mut tmp_dir.open_file("plain").unwrap(),
+        .encrypt_io(
+            &mut tmp_dir.open_readable("plain").unwrap(),
             &mut tmp_dir.create_file("enc").unwrap(),
         )
         .unwrap();
 
     crypto2
-        .decrypt_stream(
-            &mut tmp_dir.open_file("enc").unwrap(),
+        .decrypt_io(
+            &mut tmp_dir.open_readable("enc").unwrap(),
             &mut tmp_dir.create_file("dec").unwrap(),
         )
         .unwrap();

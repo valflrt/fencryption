@@ -25,7 +25,9 @@
 
 Fencryption is program to encrypt and decrypt files and full directories. Note that this project is at an early stage of development.
 
-**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.** _This is not supposed to be used in "real conditions" anyway_
+**THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.**
+
+> This program is not supposed to be used in "real conditions" because it is mere personal project. Although I think above v2 the commands encrypt and decrypt should be pretty safe.
 
 ## Usage
 
@@ -54,6 +56,10 @@ Options:
 ## Limitations
 
 - Pack files can get pretty huge therefore it is possible that they exceed the maximum file size of some file systems (for example the maximum file size of fat32 is 4GB).
+
+## Frequent Issues
+
+- When encrypting files, make sure to encrypt and decrypt them with the same version of fencryption (it is very likely that different versions will not work the same way)
 
 ## Todo
 
