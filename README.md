@@ -19,15 +19,16 @@
   </p>
 </p>
 
-- [Fencryption](#fencryption)
+- [Fencryption (binary)](#fencryption-binary)
   - [Usage](#usage)
   - [Limitations](#limitations)
   - [Frequent Issues](#frequent-issues)
   - [Roadmap](#roadmap)
   - [Tests that commands should pass](#tests-that-commands-should-pass)
   - [Ideas](#ideas)
+- [fencryption-lib](#fencryption-lib)
 
-# Fencryption
+# Fencryption (binary)
 
 > This is the new version of [Fencryption (typescript)](https://github.com/valflrt/fencryption) but in Rust (because typescript was not the most suitable language for this kind of project and also because I wanted to try Rust and low-level programming).
 
@@ -76,7 +77,8 @@ Options:
 - [x] Improve log, error handling and cli
 - [x] Implement multithreading
 - [x] Edit encryption process so the output file is smaller
-- [ ] Add commands enc
+- [ ] Add commands enc/decrypt text
+- [ ] Add packing related commands
 - [ ] Come up with a stable version (v1.0)
 
 ## Tests that commands should pass
@@ -98,3 +100,7 @@ Options:
   - Command `pack create` creates a pack from the contents of specified directory
   - Command `pack update` creates a directory where decrypted files (from the encrypted "pack") appear, you can then choose to update the pack with the changes made in the directory or to discard them
   - Command `pack extract` extracts pack to the specified directory
+
+# fencryption-lib
+
+The lib used in the fencryption binary. You can [take a look](https://docs.rs/fencryption/latest/fencryption_lib/), it has some interesting things...
