@@ -25,9 +25,9 @@ jobs:
       - name: Build docs
         run: cargo d --lib
       - name: "Add index.html"
-        run: echo "<!DOCTYPE html><html lang="en"><head><meta http-equiv="refresh" content="0; url=fencryption_lib"></head><body></body></html>" >> target/doc/index.html
+        run: echo "<!DOCTYPE html><html lang="en"><head><meta http-equiv="refresh" content="0; url=fencryption_lib"></head><body></body></html>" > target/doc/index.html
       # - name: "Add CNAME"
-      #   run: echo "fencryption-lib.valflrt.dev" >> target/doc/CNAME
+      #   run: echo "fencryption-lib.valflrt.dev" > target/doc/CNAME
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
