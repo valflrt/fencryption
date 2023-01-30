@@ -1,29 +1,19 @@
+//! Walk through a directory.
+
 use std::{
     fs::{self, DirEntry, ReadDir},
-    io,
-    path::{Path, PathBuf},
+    io::Result,
+    path::Path,
 };
 
-#[derive(Debug)]
-pub enum ErrorKind {
-    IOError(io::Error),
-}
-
-pub type Result<T, E = ErrorKind> = std::result::Result<T, E>;
-
-/// A struct for walking through a directory.
-pub struct WalkDir(PathBuf);
-
-impl WalkDir {
-    pub fn new<P: AsRef<Path>>(path: P) -> WalkDir {
-        WalkDir(path.as_ref().to_path_buf())
-    }
-
-    pub fn iter(&self) -> Result<WalkDirIterator> {
-        let mut levels = Vec::new();
-        levels.push(fs::read_dir(&self.0).map_err(|e| ErrorKind::IOError(e))?);
-        Ok(WalkDirIterator { levels })
-    }
+/// Walk through the specified directory.
+pub fn walk_dir<P>(path: P) -> Result<WalkDirIterator>
+where
+    P: AsRef<Path>,
+{
+    Ok(WalkDirIterator {
+        levels: Vec::from([fs::read_dir(path.as_ref())?]),
+    })
 }
 
 /// The Iterator for WalkDir
@@ -42,14 +32,14 @@ impl Iterator for WalkDirIterator {
                         if file_type.is_dir() {
                             self.levels.push(match fs::read_dir(&entry.path()) {
                                 Ok(v) => v,
-                                Err(e) => return Some(Err(ErrorKind::IOError(e))),
+                                Err(e) => return Some(Err(e)),
                             });
                         }
                         return Some(Ok(entry));
                     }
-                    Err(e) => return Some(Err(ErrorKind::IOError(e))),
+                    Err(e) => return Some(Err(e)),
                 },
-                Some(Err(e)) => return Some(Err(ErrorKind::IOError(e))),
+                Some(Err(e)) => return Some(Err(e)),
                 None => {
                     self.levels.pop();
                     return self.next();

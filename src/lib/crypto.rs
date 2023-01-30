@@ -1,22 +1,22 @@
-use aes_gcm::{aead::Aead, aes::cipher::InvalidLength, Aes256Gcm, KeyInit, Nonce};
+//! Crypto utility.
+
+use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
 use rand::{rngs::OsRng, RngCore};
 use sha2::{Digest, Sha256};
 use std::io::{self, Read, Write};
 
-use crate::constants::DEFAULT_CHUNK_LEN;
+/// Default initialization vector length (12b).
+pub const IV_LEN: usize = 96 / 8;
+/// Default authentication tag length (16b).
+pub const TAG_LEN: usize = 128 / 8;
+/// Encryption chunk length: plaintext (128kb).
+pub const ENC_CHUNK_LEN: usize = 128000;
+/// Decryption chunk length: iv (12b) + ciphertext (128kb) + auth tag (16b).
+pub const DEC_CHUNK_LEN: usize = IV_LEN + ENC_CHUNK_LEN + TAG_LEN;
 
-/// Default initialization vector length
-const IV_LEN: usize = 96 / 8; // 12
-/// Default authentication tag length
-const TAG_LEN: usize = 128 / 8; // 16
-/// Encryption chunk length: plaintext (128kb)
-pub const ENC_CHUNK_LEN: usize = DEFAULT_CHUNK_LEN;
-/// Decryption chunk length: iv (12) + ciphertext (128kb) + auth tag (16)
-pub const DEC_CHUNK_LEN: usize = IV_LEN + DEFAULT_CHUNK_LEN + TAG_LEN;
-
+/// Enum of the different possible crypto errors.
 #[derive(Debug)]
 pub enum ErrorKind {
-    InvalidKeyLength(InvalidLength),
     AesError(aes_gcm::Error),
     Io(io::Error),
 }
@@ -28,7 +28,7 @@ pub struct Crypto {
 }
 
 impl Crypto {
-    /// Creates a new Crypto instance, the given key will be
+    /// Create a new [`Crypto`] instance, the given key will be
     /// used for every operation performed.
     pub fn new<K>(key: K) -> Result<Crypto, ErrorKind>
     where
@@ -36,11 +36,11 @@ impl Crypto {
     {
         let key = hash_key(key.as_ref());
         Ok(Crypto {
-            cipher: Aes256Gcm::new_from_slice(&key).map_err(|e| ErrorKind::InvalidKeyLength(e))?,
+            cipher: Aes256Gcm::new_from_slice(&key).unwrap(),
         })
     }
 
-    /// Basic function to encrypt.
+    /// Encrypt bytes with initialisation vector.
     pub fn encrypt_with_iv(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         Ok(self
             .cipher
@@ -48,7 +48,7 @@ impl Crypto {
             .map_err(|e| ErrorKind::AesError(e))?)
     }
 
-    /// Basic function to decrypt.
+    /// Decrypt bytes with initialisation vector.
     pub fn decrypt_with_iv(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
         Ok(self
             .cipher
@@ -101,14 +101,13 @@ impl Crypto {
     where
         E: AsRef<[u8]>,
     {
-        let iv = &enc.as_ref()[..IV_LEN];
-        let ciphertext = &enc.as_ref()[IV_LEN..];
-
+        let (iv, ciphertext) = enc.as_ref().split_at(IV_LEN);
         self.decrypt_with_iv(ciphertext, iv)
     }
 
-    /// Encrypt a stream from a source and a destination
-    /// (both [`fs::File`][std::fs::File]).
+    /// Encrypt data from a reader and write it in a writer.
+    /// When working with small pieces of data, use
+    /// [`Crypto::encrypt`].
     ///
     /// Example:
     ///
@@ -142,7 +141,7 @@ impl Crypto {
 
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-            dest.write(&self.encrypt(&buffer[..read_len])?)
+            dest.write_all(&self.encrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
             // Stops when the loop reached the end of the file
             if read_len != ENC_CHUNK_LEN {
@@ -153,8 +152,9 @@ impl Crypto {
         Ok(())
     }
 
-    /// Decrypt a stream from a source and a destination
-    /// (both [`fs::File`][std::fs::File]).
+    /// Decrypt data from a reader and write it in a writer.
+    /// When working with small pieces of data, use
+    /// [`Crypto::decrypt`].
     ///
     /// Example:
     ///
@@ -194,11 +194,9 @@ impl Crypto {
     ) -> Result<(), ErrorKind> {
         let mut buffer = [0u8; DEC_CHUNK_LEN];
 
-        // TODO Add a callback with a percentage of the encryption available
-        // let file_len = source.metadata().map_err(|e| ErrorKind::Io(e))?;
         loop {
             let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
-            dest.write(&self.decrypt(&buffer[..read_len])?)
+            dest.write_all(&self.decrypt(&buffer[..read_len])?)
                 .map_err(|e| ErrorKind::Io(e))?;
             // Stops when the loop reached the end of the file.
             if read_len != DEC_CHUNK_LEN {

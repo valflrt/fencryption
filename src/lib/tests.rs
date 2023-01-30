@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{crypto::Crypto, tmp::TmpDir, walk_dir::WalkDir};
+use crate::{crypto::Crypto, tmp::TmpDir, walk_dir::walk_dir};
 
 // Crypto tests
 
@@ -85,10 +85,7 @@ fn walk_directory_and_encounter_every_file_in_it() {
     tmp_dir.write_file("c/b", &[]).unwrap();
     tmp_dir.write_file("d", &[]).unwrap();
 
-    let walk_dir = WalkDir::new(tmp_dir.path());
-
-    let entries: Vec<PathBuf> = walk_dir
-        .iter()
+    let entries: Vec<PathBuf> = walk_dir(tmp_dir.path())
         .unwrap()
         .map(|e| e.unwrap().path())
         .collect();

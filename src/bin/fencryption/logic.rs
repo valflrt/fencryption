@@ -11,10 +11,11 @@ use fencryption_lib::{
 };
 use human_duration::human_duration;
 use rpassword::prompt_password;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{Error, ErrorBuilder},
-    log, metadata_structs,
+    log,
     result::Result,
 };
 
@@ -28,6 +29,22 @@ pub enum Command {
 pub enum OutputDecPath {
     Direct(PathBuf),
     Parent(PathBuf),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PathMetadata(PathBuf);
+
+impl PathMetadata {
+    pub fn new<P>(path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        PathMetadata(path.as_ref().to_owned())
+    }
+
+    pub fn path(&self) -> PathBuf {
+        self.0.to_owned()
+    }
 }
 
 pub fn checks<P>(input_paths: P, output_path: &Option<PathBuf>) -> Result<()>
@@ -229,7 +246,7 @@ where
         })?;
 
     if let Some(p) = relative_path {
-        let metadata = metadata::encode(metadata_structs::FileMetadata::new(p)).map_err(|e| {
+        let metadata = metadata::encode(PathMetadata::new(p)).map_err(|e| {
             ErrorBuilder::new()
                 .message("Failed to encode file metadata")
                 .error(e)
@@ -307,7 +324,7 @@ where
                     .error(e)
                     .build()
             })?;
-            let metadata = metadata::decode::<metadata_structs::FileMetadata>(
+            let metadata = metadata::decode::<PathMetadata>(
                 &crypto.decrypt(&metadata_bytes).map_err(|e| {
                     ErrorBuilder::new()
                         .message("Failed to decrypt metadata")

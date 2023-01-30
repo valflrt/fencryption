@@ -1,158 +1,162 @@
+//! Create/unpack packs.
+//!
+//! A pack is a file with all the contents of a directory
+//! inside of it.
+//!
+//! Uses [`metadata`] in order to ease the process of
+//! storing/separating the files inside of it.
+
 use std::{
-    fs::{self, OpenOptions},
+    fs::OpenOptions,
     io::{self, Read, Write},
     path::{Path, PathBuf},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    constants::DEFAULT_CHUNK_LEN,
-    file_header::{self, FileHeader, HEADER_LEN},
-    io::stream,
-    walk_dir::{self, WalkDir},
+    io::{stream, DEFAULT_BUF_LEN},
+    metadata,
+    walk_dir::walk_dir,
 };
 
+#[derive(Serialize, Deserialize, Debug)]
+struct PackEntryMetadata(PathBuf, u64);
+
+impl PackEntryMetadata {
+    pub fn new<P>(path: P, file_len: u64) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        PackEntryMetadata(path.as_ref().to_owned(), file_len)
+    }
+
+    pub fn path(&self) -> PathBuf {
+        self.0.to_owned()
+    }
+
+    pub fn file_len(&self) -> u64 {
+        self.1
+    }
+}
+
+/// Enum of the different possible pack errors.
 #[derive(Debug)]
 pub enum ErrorKind {
-    IO(io::Error),
-    WalkDir(walk_dir::ErrorKind),
-    FileHeader(file_header::ErrorKind),
+    Io(io::Error),
+    MetadataError(metadata::ErrorKind),
     ConversionError,
     PathAlreadyExists,
     PathNotFound,
     PathError,
 }
-
 type Result<T, E = ErrorKind> = std::result::Result<T, E>;
 
-/// A struct to manipulate (create/unpack) packs.
-///
-/// A pack is a file with all the contents of a directory
-/// inside of it.
-///
-/// Pack uses [`FileHeader`][crate::file_header::FileHeader] in order to
-/// easily store/separate files inside of it.
-pub struct Pack(PathBuf);
+/// Create the pack file with the contents of the specified
+/// directory.
+pub fn create<P1, P2>(input_dir_path: P1, output_dir_path: P2) -> Result<()>
+where
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+{
+    let mut dest = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(output_dir_path.as_ref())
+        .map_err(|e| ErrorKind::Io(e))?;
 
-impl Pack {
-    pub fn new<P>(path: P) -> Pack
-    where
-        P: AsRef<Path>,
-    {
-        Pack(path.as_ref().to_owned())
+    let walk_dir = walk_dir(&input_dir_path).map_err(|e| ErrorKind::Io(e))?;
+
+    for entry in walk_dir {
+        let entry = entry.map_err(|e| ErrorKind::Io(e))?;
+
+        if entry.path().is_file() {
+            let mut source = OpenOptions::new()
+                .read(true)
+                .open(entry.path())
+                .map_err(|e| ErrorKind::Io(e))?;
+
+            // Creates file header.
+            let metadata = metadata::encode(PackEntryMetadata::new(
+                input_dir_path
+                    .as_ref()
+                    .strip_prefix(entry.path())
+                    .map_err(|_| ErrorKind::PathError)?,
+                entry.metadata().map_err(|e| ErrorKind::Io(e))?.len(),
+            ))
+            .map_err(|e| ErrorKind::MetadataError(e))?;
+
+            // Writes file header to the pack.
+            dest.write_all(
+                &[
+                    (metadata.len() as u16).to_be_bytes().as_ref(),
+                    metadata.as_ref(),
+                ]
+                .concat(),
+            )
+            .map_err(|e| ErrorKind::Io(e))?;
+
+            stream(&mut source, &mut dest).map_err(|e| ErrorKind::Io(e))?;
+        }
     }
 
-    /// Creates/Writes the pack file using the contents of the given
-    /// directory.
-    pub fn create<P>(&self, dir_path: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let mut pack_file = OpenOptions::new()
+    Ok(())
+}
+
+/// Unpack the pack from the associated pack file (fails
+/// if the pack file doesn't exist).
+pub fn unpack<P1, P2>(input_dir_path: P1, output_dir_path: P2) -> Result<()>
+where
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+{
+    let mut source = OpenOptions::new()
+        .read(true)
+        .open(input_dir_path.as_ref())
+        .map_err(|e| ErrorKind::Io(e))?;
+
+    loop {
+        let mut len_bytes = [0u8; 2];
+        source
+            .read_exact(&mut len_bytes)
+            .map_err(|e| ErrorKind::Io(e))?;
+        let len = u16::from_be_bytes(len_bytes) as usize;
+        let mut metadata_bytes = vec![0u8; len];
+        source
+            .read_exact(&mut metadata_bytes)
+            .map_err(|e| ErrorKind::Io(e))?;
+        let metadata = metadata::decode::<PackEntryMetadata>(&metadata_bytes)
+            .map_err(|e| ErrorKind::MetadataError(e))?;
+
+        let mut file = OpenOptions::new()
             .write(true)
             .create(true)
-            .open(&self.0)
-            .map_err(|e| ErrorKind::IO(e))?;
+            .open(output_dir_path.as_ref().join(metadata.path()))
+            .map_err(|e| ErrorKind::Io(e))?;
 
-        let walk_dir = WalkDir::new(&dir_path)
-            .iter()
-            .map_err(|e| ErrorKind::WalkDir(e))?;
+        let file_len = metadata.file_len();
 
-        for entry in walk_dir {
-            let entry = entry.map_err(|e| ErrorKind::WalkDir(e))?;
+        // Gets the number of chunks to read before reaching
+        // the last bytes.
+        let chunks = file_len.div_euclid(DEFAULT_BUF_LEN as u64);
+        // Gets the number of the remaining bytes (after
+        // reading all chunks).
+        let rem_len = file_len.rem_euclid(DEFAULT_BUF_LEN as u64) as usize;
 
-            if entry.path().is_file() {
-                let mut file = OpenOptions::new()
-                    .read(true)
-                    .open(entry.path())
-                    .map_err(|e| ErrorKind::IO(e))?;
-
-                // Creates file header.
-                let header = FileHeader::new(&entry.path(), &dir_path)
-                    .map_err(|e| ErrorKind::FileHeader(e))?;
-
-                // Writes file header to the pack.
-                pack_file
-                    .write_all(&header.to_vec().map_err(|e| ErrorKind::FileHeader(e))?)
-                    .map_err(|e| ErrorKind::IO(e))?;
-
-                stream(&mut file, &mut pack_file).map_err(|e| ErrorKind::IO(e))?;
-            }
+        // Reads all chunks and writes them to the output
+        // file.
+        let mut buffer = [0u8; DEFAULT_BUF_LEN];
+        for _ in 0..chunks {
+            source
+                .read_exact(&mut buffer)
+                .map_err(|e| ErrorKind::Io(e))?;
+            file.write_all(&buffer).map_err(|e| ErrorKind::Io(e))?;
         }
 
-        Ok(())
-    }
-
-    /// Unpacks the pack from the associated pack file (fails
-    /// if the pack file doesn't exist).
-    pub fn unpack<P>(&self, output_path: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let mut pack_file = OpenOptions::new()
-            .read(true)
-            .open(&self.0)
-            .map_err(|e| ErrorKind::IO(e))?;
-
-        loop {
-            let mut header_bytes = [0u8; HEADER_LEN];
-
-            let read_count = pack_file
-                .read(&mut header_bytes)
-                .map_err(|e| ErrorKind::IO(e))?;
-            if read_count != header_bytes.len() {
-                break Ok(());
-            }
-
-            let header: FileHeader =
-                FileHeader::from_bytes(&header_bytes).map_err(|e| ErrorKind::FileHeader(e))?;
-
-            let mut path_bytes = vec![0u8; header.path_len() as usize];
-            pack_file
-                .read_exact(&mut path_bytes)
-                .map_err(|e| ErrorKind::IO(e))?;
-
-            let path = output_path
-                .as_ref()
-                .join(std::str::from_utf8(&path_bytes).map_err(|_| ErrorKind::ConversionError)?);
-
-            // Creates all parent directories.
-            let parent_dir_path = path.parent().ok_or(ErrorKind::PathError)?.to_path_buf();
-            fs::create_dir_all(parent_dir_path).map_err(|e| ErrorKind::IO(e))?;
-
-            let mut file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&path)
-                .map_err(|e| ErrorKind::IO(e))?;
-
-            // Gets the number of chunks to read before reaching
-            // the last bytes.
-            let chunks = header.file_len().div_euclid(DEFAULT_CHUNK_LEN as u64);
-            // Gets the number of the remaining bytes (after
-            // reading all chunks).
-            let rem_len = header.file_len().rem_euclid(DEFAULT_CHUNK_LEN as u64) as usize;
-
-            // Reads all chunks and writes them to the output
-            // file.
-            let mut buffer = [0u8; DEFAULT_CHUNK_LEN];
-            for _ in 0..chunks {
-                pack_file
-                    .read_exact(&mut buffer)
-                    .map_err(|e| ErrorKind::IO(e))?;
-                file.write_all(&buffer).map_err(|e| ErrorKind::IO(e))?;
-            }
-
-            // Reads the remaining bytes and writes them to
-            // the output file.
-            let mut last = vec![0u8; rem_len];
-            pack_file
-                .read_exact(&mut last)
-                .map_err(|e| ErrorKind::IO(e))?;
-            file.write_all(&last).map_err(|e| ErrorKind::IO(e))?;
-        }
-    }
-
-    pub fn path(&self) -> &PathBuf {
-        return &self.0;
+        // Reads the remaining bytes and writes them to
+        // the output file.
+        let mut last = vec![0u8; rem_len];
+        source.read_exact(&mut last).map_err(|e| ErrorKind::Io(e))?;
+        file.write_all(&last).map_err(|e| ErrorKind::Io(e))?;
     }
 }
