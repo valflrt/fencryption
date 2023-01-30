@@ -1,59 +1,57 @@
-use std::{
-    fs::File,
-    io::{self, Read, Write},
-};
+//! IO utilities.
 
-use crate::constants::DEFAULT_CHUNK_LEN;
+use std::io::{self, Read, Write};
 
-fn move_chunk(
-    buf: &mut [u8; DEFAULT_CHUNK_LEN],
-    from: &mut File,
-    to: &mut File,
-) -> io::Result<usize> {
-    let read_len = from.read(buf)?;
-    to.write(&buf[..read_len])?;
-    Ok(read_len)
-}
+/// Default buffer length for io (4kb).
+pub const DEFAULT_BUF_LEN: usize = 4000;
 
-/// Transfers data from a file to another.
-pub fn stream(from: &mut File, to: &mut File) -> io::Result<()> {
-    let mut buffer = [0u8; DEFAULT_CHUNK_LEN];
+/// Transfer data from a reader to a writer.
+pub fn stream(from: &mut impl Read, to: &mut impl Write) -> io::Result<()> {
+    let mut buffer = [0u8; DEFAULT_BUF_LEN];
     loop {
-        let read_len = move_chunk(&mut buffer, from, to)?;
-        if read_len != DEFAULT_CHUNK_LEN {
+        let read_len = from.read(&mut buffer)?;
+        to.write(&buffer[..read_len])?;
+        if read_len != DEFAULT_BUF_LEN {
             break;
         }
     }
     Ok(())
 }
 
-/// Chain struct that enables to chain two implementors of
-/// the Read trait.
-pub struct Chain<R1: Read, R2: Read>(R1, R2, bool);
+/// Adapter to chain two readers together.
+///
+/// It might seem the exact same as [`std::io::Chain`] but it
+/// is not. The difference is that when it reaches the end of
+/// the first reader, it fills the rest of the buffer with
+/// the first bytes from the second reader, what [`std::io::Chain`]
+/// doesn't do.
+pub struct Chain<R1: Read, R2: Read> {
+    first: Option<R1>,
+    second: R2,
+}
 
 impl<R1: Read, R2: Read> Chain<R1, R2> {
-    /// Creates a Chain that pulls bytes from the first
-    /// Reader until it reaches its EOF. When it is reached,
-    /// pulls bytes from the second Reader.
+    /// Create a Chain from the two given readers.
     pub fn new(first: R1, second: R2) -> Self {
-        Chain(first, second, false)
+        Chain {
+            first: Some(first),
+            second,
+        }
     }
 }
 
 impl<R1: Read, R2: Read> Read for Chain<R1, R2> {
     /// Pull some bytes from this source into the specified
-    /// buffer, returning how many bytes were read. The function
-    /// first pulls bytes from the prepend buffer.
+    /// buffer, returning how many bytes were read.
     ///
     /// Example:
     ///
     /// ```
-    /// use fencryption_lib::io::Chain;
     /// use std::io::Read;
+    /// use fencryption_lib::io::Chain;
     ///
-    /// let lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
-    /// //
-    /// let mut source = Chain::new([255u8; 53].as_ref(), lorem.as_bytes());
+    /// let text = "Never gonna give you up ! Never gonna let you down !";
+    /// let mut source = Chain::new([255u8; 41].as_ref(), text.as_bytes());
     ///
     /// let mut buf = vec![0u8; 16];
     /// loop {
@@ -64,21 +62,33 @@ impl<R1: Read, R2: Read> Read for Chain<R1, R2> {
     ///     }
     /// }
     /// ```
+    ///
+    /// Output:
+    ///
+    /// ```sh
+    /// [ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff] 16
+    /// [ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff, ff] 16
+    /// [ff, ff, ff, ff, ff, ff, ff, ff, ff, 4e, 65, 76, 65, 72, 20, 67] 16
+    /// [6f, 6e, 6e, 61, 20, 67, 69, 76, 65, 20, 79, 6f, 75, 20, 75, 70] 16
+    /// [20, 21, 20, 4e, 65, 76, 65, 72, 20, 67, 6f, 6e, 6e, 61, 20, 6c] 16
+    /// [65, 74, 20, 79, 6f, 75, 20, 64, 6f, 77, 6e, 20, 21] 13
+    /// ```
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        if self.2 {
-            Ok(self.1.read(buf)?)
-        } else {
-            let buf_len = buf.len();
-            match self.0.read(&mut buf)? {
-                n if n < buf_len => {
-                    let mut from_second = vec![0u8; buf_len - n];
-                    let n2 = self.1.read(&mut from_second)?;
-                    buf.write(&[&buf[..n], &from_second].concat())?;
-                    self.2 = true;
-                    Ok(n + n2)
+        match &mut self.first {
+            Some(first) => {
+                let buf_len = buf.len();
+                match first.read(&mut buf)? {
+                    n if n < buf_len => {
+                        let mut from_second = vec![0u8; buf_len - n];
+                        let n2 = self.second.read(&mut from_second)?;
+                        buf.write(&[&buf[..n], &from_second].concat())?;
+                        self.first = None;
+                        Ok(n + n2)
+                    }
+                    n => Ok(n),
                 }
-                n => Ok(n),
             }
+            None => Ok(self.second.read(buf)?),
         }
     }
 }

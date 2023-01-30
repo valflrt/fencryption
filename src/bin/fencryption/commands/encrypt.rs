@@ -1,7 +1,7 @@
 use std::{fs, iter::zip, path::PathBuf, sync::mpsc::channel, time};
 
 use clap::{arg, Args};
-use fencryption_lib::{crypto::Crypto, walk_dir::WalkDir};
+use fencryption_lib::{crypto::Crypto, walk_dir::walk_dir};
 use threadpool::ThreadPool;
 use uuid::Uuid;
 
@@ -67,7 +67,7 @@ pub fn execute(args: &Command) -> Result<()> {
                         .build()
                 })?;
 
-                let walk_dir = WalkDir::new(&dir_path).iter().map_err(|e| {
+                let walk_dir = walk_dir(&dir_path).map_err(|e| {
                     ErrorBuilder::new()
                         .message("Failed to read directory")
                         .error(e)
