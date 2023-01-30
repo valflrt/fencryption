@@ -21,10 +21,9 @@
 
 - [Fencryption (binary)](#fencryption-binary)
   - [Usage](#usage)
-  - [Limitations](#limitations)
-  - [Frequent Issues](#frequent-issues)
+  - [Limitations/Issues](#limitationsissues)
   - [Roadmap](#roadmap)
-  - [Tests that commands should pass](#tests-that-commands-should-pass)
+  - [Tests commands should pass](#tests-commands-should-pass)
   - [Ideas](#ideas)
 - [fencryption-lib](#fencryption-lib)
 
@@ -60,12 +59,9 @@ Options:
   -V, --version  Print version
 ```
 
-## Limitations
+## Limitations/Issues
 
 - Pack files can get pretty huge therefore it is possible that they exceed the maximum file size of some file systems (for example the maximum file size of fat32 is 4GB).
-
-## Frequent Issues
-
 - When encrypting files, make sure to encrypt and decrypt them with the same version of fencryption (it is very likely that different versions will not work the same way)
 
 ## Roadmap
@@ -77,11 +73,11 @@ Options:
 - [x] Improve log, error handling and cli
 - [x] Implement multithreading
 - [x] Edit encryption process so the output file is smaller
-- [ ] Add commands enc/decrypt text
+- [ ] Add commands to enc/decrypt text/base64/hex
 - [ ] Add packing related commands
 - [ ] Come up with a stable version (v1.0)
 
-## Tests that commands should pass
+## Tests commands should pass
 
 - encrypt and decrypt
   - [x] encrypt/decrypt
