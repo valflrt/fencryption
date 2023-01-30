@@ -1,0 +1,36 @@
+name: docs
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "README.md"
+      - "LICENSE"
+      - "src/bin"
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ATiltedTree/setup-rust@v1.0.5
+        with:
+          rust-version: stable
+      - name: Build docs
+        run: cargo d --lib
+      - name: "Add index.html"
+        run: echo "<!DOCTYPE html><html lang="en"><head><meta http-equiv="refresh" content="0; url=fencryption_lib"></head><body></body></html>" >> target/doc/index.html
+      # - name: "Add CNAME"
+      #   run: echo "fencryption-lib.valflrt.dev" >> target/doc/CNAME
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: pages
+          publish_dir: target/doc
