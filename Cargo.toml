@@ -17,6 +17,7 @@ path = "src/bin/fencryption/bin.rs"
 
 [dependencies]
 aes-gcm = "0.10.1"
+base64 = "0.21.0"
 clap = { version = "4.1.1", features = ["derive"] }
 colored = "2.0.0"
 human-duration = "0.1.0"

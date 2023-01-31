@@ -2,8 +2,8 @@ use clap::Subcommand;
 
 use crate::error::Error;
 
-pub mod decrypt;
-pub mod encrypt;
+mod decrypt;
+mod encrypt;
 
 #[derive(Subcommand)]
 pub enum CommandEnum {
