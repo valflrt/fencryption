@@ -73,7 +73,7 @@ Options:
 - [x] Improve log, error handling and cli
 - [x] Implement multithreading
 - [x] Edit encryption process so the output file is smaller
-- [ ] Add commands to enc/decrypt text/base64
+- [x] Add commands to enc/decrypt text/base64
 - [ ] Add packing related commands
 - [ ] Come up with a stable version (v1.0)
 
