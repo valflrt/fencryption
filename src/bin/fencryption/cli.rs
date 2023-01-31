@@ -4,7 +4,7 @@ use crate::{commands, log};
 
 #[derive(Parser)]
 #[command(name = "fencryption", version)]
-/// A program to encrypt/decrypt files and directories
+/// A program to encrypt/decrypt text, files and directories
 struct Cli {
     #[clap(subcommand)]
     command: commands::CommandEnum,

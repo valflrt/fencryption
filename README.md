@@ -20,7 +20,7 @@
 </p>
 
 - [Fencryption (binary)](#fencryption-binary)
-  - [Usage](#usage)
+  - [Preview](#preview)
   - [Limitations/Issues](#limitationsissues)
   - [Roadmap](#roadmap)
   - [Tests commands should pass](#tests-commands-should-pass)
@@ -37,20 +37,20 @@ Fencryption is program to encrypt and decrypt files and full directories. Note t
 
 This program is not supposed to be used in "real conditions" because it is a mere personal project. Although I think above v1.0 the commands encrypt and decrypt should be pretty safe.
 
-## Usage
+## Preview
 
 ```
 fencryption --help
 ```
 
 ```
-A program to encrypt/decrypt files and directories
+A program to encrypt/decrypt text, files and directories
 
 Usage: fencryption [OPTIONS] <COMMAND>
 
 Commands:
-  encrypt  Encrypt files and directories
-  decrypt  Decrypt files and directories
+  encrypt  Encrypt text or files and directories
+  decrypt  Decrypt text or files and directories
   help     Print this message or the help of the given subcommand(s)
 
 Options:
