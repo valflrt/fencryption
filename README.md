@@ -29,7 +29,7 @@
 
 # Fencryption (binary)
 
-> This is the new version of [Fencryption (typescript)](https://github.com/valflrt/fencryption) but in Rust (because typescript was not the most suitable language for this kind of project and also because I wanted to try Rust and low-level programming).
+> I first built this program with typescript (see [fencryption-typescript](https://github.com/valflrt/fencryption-typescript)) but I switched to Rust because typescript was not the most suitable language for this kind of project and also because I wanted to try Rust and low-level programming.
 
 Fencryption is program to encrypt and decrypt files and full directories. Note that this project is at an early stage of development.
 
