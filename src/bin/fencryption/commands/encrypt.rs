@@ -12,7 +12,7 @@ pub enum CommandEnum {
 }
 
 #[derive(Args)]
-/// Encrypt text or files and directories
+/// Encrypt text or files
 pub struct Command {
     #[clap(subcommand)]
     command: CommandEnum,

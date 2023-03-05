@@ -12,9 +12,9 @@ use crate::{
 };
 
 #[derive(Args, Clone)]
-/// Encrypt files and directories
+/// Encrypt files (and directories)
 pub struct Command {
-    /// Paths of files and directories to encrypt
+    /// Paths of files to encrypt
     #[arg(required = true)]
     paths: Vec<PathBuf>,
 
@@ -23,11 +23,11 @@ pub struct Command {
     #[arg(short, long)]
     output_path: Option<PathBuf>,
 
-    /// Overwrite output files and directories
+    /// Overwrite output files
     #[clap(short = 'O', long)]
     overwrite: bool,
 
-    /// Delete original files and directories after encrypting
+    /// Delete original files after encrypting
     #[clap(short = 'd', long)]
     delete_original: bool,
 
