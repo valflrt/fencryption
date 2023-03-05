@@ -126,7 +126,7 @@ Arguments:
 
 Options:
   -D, --debug  Enable debug log
-  -h, --help   Print help                     Print help
+  -h, --help   Print help
 ```
 
 </details>
