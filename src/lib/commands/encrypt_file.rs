@@ -1,3 +1,5 @@
+//! Encrypt file.
+
 use std::{fs, iter::zip, path::PathBuf, sync::mpsc::channel, time};
 
 use threadpool::ThreadPool;
@@ -9,6 +11,7 @@ use crate::{
     walk_dir::walk_dir,
 };
 
+/// Encrypts the given paths.
 pub fn execute(
     key: &String,
     paths: &Vec<PathBuf>,

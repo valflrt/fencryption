@@ -1,4 +1,4 @@
-// use std::io::{self, stdin, stdout, Write};
+//! Log utilities.
 
 use colored::Colorize;
 
@@ -24,7 +24,8 @@ where
     )
 }
 
-fn format_message<M>(message: M, kind: LogKind) -> String
+/// Styles a message.
+fn style_message<M>(message: M, kind: LogKind) -> String
 where
     M: AsRef<str>,
 {
@@ -45,13 +46,15 @@ where
     }
 }
 
+/// Formats message with the "info" style.
 pub fn format_info<M>(message: M) -> String
 where
     M: AsRef<str>,
 {
-    format_message(message, LogKind::Info)
+    style_message(message, LogKind::Info)
 }
 
+/// Prints message with the "info" style.
 pub fn println_info<M>(message: M)
 where
     M: AsRef<str>,
@@ -59,13 +62,15 @@ where
     println!("{}", format_info(message));
 }
 
+/// Formats message with the "success" style.
 pub fn format_success<M>(message: M) -> String
 where
     M: AsRef<str>,
 {
-    format_message(message, LogKind::Success)
+    style_message(message, LogKind::Success)
 }
 
+/// Prints message with the "success" style.
 pub fn println_success<M>(message: M)
 where
     M: AsRef<str>,
@@ -73,13 +78,15 @@ where
     println!("{}", format_success(message))
 }
 
+/// Formats message with the "error" style.
 pub fn format_error<M>(message: M) -> String
 where
     M: AsRef<str>,
 {
-    format_message(message, LogKind::Error)
+    style_message(message, LogKind::Error)
 }
 
+/// Prints message with the "error" style.
 pub fn println_error<M>(message: M)
 where
     M: AsRef<str>,
@@ -87,13 +94,15 @@ where
     println!("{}", format_error(message))
 }
 
+/// Formats message with the "warn" style.
 pub fn format_warn<M>(message: M) -> String
 where
     M: AsRef<str>,
 {
-    format_message(message, LogKind::Warn)
+    style_message(message, LogKind::Warn)
 }
 
+/// Prints message with the "warn" style.
 pub fn println_warn<M>(message: M)
 where
     M: AsRef<str>,

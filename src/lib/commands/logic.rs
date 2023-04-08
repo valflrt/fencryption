@@ -1,3 +1,5 @@
+//! Logic used in commands.
+
 use std::{
     fs::{self, OpenOptions},
     io::{Read, Write},

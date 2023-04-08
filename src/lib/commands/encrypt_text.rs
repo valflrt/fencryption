@@ -1,3 +1,5 @@
+//! Encrypt text.
+
 use base64::{engine::general_purpose, Engine};
 
 use crate::{
@@ -5,6 +7,7 @@ use crate::{
     crypto::Crypto,
 };
 
+/// Encrypts given text.
 pub fn execute(key: &String, text: &String) -> Result<String> {
     let crypto = Crypto::new(key).map_err(|e| {
         ErrorBuilder::new()
