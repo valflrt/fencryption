@@ -126,8 +126,38 @@ impl TmpDir {
     }
 
     /// Read temporary directory. Akin to [`fs::read_dir`].
-    pub fn read_dir(&self) -> io::Result<ReadDir> {
-        fs::read_dir(&self.0)
+    pub fn read_dir<P>(&self, path: P) -> io::Result<ReadDir>
+    where
+        P: AsRef<Path>,
+    {
+        fs::read_dir(&self.0.join(path))
+    }
+
+    /// Remove a file in the current directory. Akin to
+    /// [`fs::remove_file`].
+    pub fn remove_file<P>(&self, path: P) -> io::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        fs::remove_file(&self.0.join(path))
+    }
+
+    /// Remove a directory in the current directory. Akin to
+    /// [`fs::remove_dir`].
+    pub fn remove_dir<P>(&self, path: P) -> io::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        fs::remove_dir(&self.0.join(path))
+    }
+
+    /// Remove a directory and all its contents in the current
+    /// directory. Akin to [`fs::remove_dir_all`].
+    pub fn remove_dir_all<P>(&self, path: P) -> io::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        fs::remove_dir_all(&self.0.join(path))
     }
 }
 
