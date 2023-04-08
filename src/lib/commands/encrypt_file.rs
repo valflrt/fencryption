@@ -4,14 +4,13 @@ use threadpool::ThreadPool;
 use uuid::Uuid;
 
 use crate::{
-    commands::logic,
-    commands::{Error, ErrorBuilder, Result},
+    commands::{logic, Command, Error, ErrorBuilder, Result},
     crypto::Crypto,
     walk_dir::walk_dir,
 };
 
 pub fn execute(
-    key: String,
+    key: &String,
     paths: &Vec<PathBuf>,
     output_path: &Option<PathBuf>,
     overwrite: &bool,
@@ -24,7 +23,7 @@ pub fn execute(
 )> {
     let timer = time::SystemTime::now();
 
-    let output_paths = logic::get_output_paths(&paths, &output_path, logic::Command::Encrypt);
+    let output_paths = logic::get_output_paths(&paths, &output_path, Command::Encrypt);
 
     logic::checks(&paths, &output_path)?;
     logic::overwrite(&output_paths, *overwrite)?;
@@ -58,7 +57,7 @@ pub fn execute(
                 })?;
 
                 let threadpool = ThreadPool::new(8);
-                let (inner_tx, inner_rx) = channel();
+                let (tx, rx) = channel();
                 let mut tries_n = 0;
 
                 for dir_entry in walk_dir {
@@ -85,7 +84,7 @@ pub fn execute(
                             tries_n += 1;
 
                             let crypto = crypto.clone();
-                            let tx = inner_tx.clone();
+                            let tx = tx.clone();
                             let output_path = output_path.clone();
 
                             threadpool.execute(move || {
@@ -110,8 +109,7 @@ pub fn execute(
                 }
 
                 threadpool.join();
-                inner_rx
-                    .iter()
+                rx.iter()
                     .take(tries_n)
                     .for_each(|(path, result)| match result {
                         Ok(_) => success += 1,
@@ -139,7 +137,7 @@ pub fn execute(
         skips,
         timer.elapsed().map_err(|e| {
             ErrorBuilder::new()
-                .message("Failed to get elasped time")
+                .message("Failed to get elapsed time")
                 .error(e)
                 .build()
         })?,

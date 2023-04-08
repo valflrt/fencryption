@@ -4,21 +4,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{
-    crypto::{self, Crypto},
-    log, metadata,
-};
-use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
 
-use super::{ErrorBuilder, ExecOutput, Result};
-
-pub enum Command {
-    Encrypt,
-    Decrypt,
-    // Pack,
-    // Unpack,
-}
+use crate::{
+    commands::{Command, ErrorBuilder, Result},
+    crypto::{self, Crypto},
+    metadata,
+};
 
 pub enum OutputDecPath {
     Direct(PathBuf),
@@ -112,6 +104,7 @@ where
     P: AsRef<[PathBuf]>,
 {
     if paths.as_ref().iter().any(|p| p.exists()) {
+        println!("{:#?}, {}", paths.as_ref()[0], paths.as_ref()[0].exists());
         if overwrite {
             for path in paths.as_ref() {
                 delete_entry(&path).map_err(|e| {

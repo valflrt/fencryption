@@ -1,17 +1,18 @@
-// pub mod decrypt_file;
-// pub mod decrypt_text;
+pub mod decrypt_file;
+pub mod decrypt_text;
 pub mod encrypt_file;
-// pub mod encrypt_text;
+pub mod encrypt_text;
 
 pub mod logic;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-pub enum ExecOutput<E = Error> {
-    Ok,
-    Error(E),
-    Log(String),
+pub enum Command {
+    Encrypt,
+    Decrypt,
+    // Pack,
+    // Unpack,
 }
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 pub struct Error {

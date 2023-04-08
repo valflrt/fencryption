@@ -1,10 +1,15 @@
 use std::path::PathBuf;
 
-use crate::{crypto::Crypto, tmp::TmpDir, walk_dir::walk_dir};
+use crate::{
+    commands::{decrypt_file, encrypt_file},
+    crypto::Crypto,
+    tmp::TmpDir,
+    walk_dir::walk_dir,
+};
 
 // Crypto tests
 
-const KEY: &[u8] = b"my_super_key";
+const KEY: &str = "my_super_key";
 const PLAIN_DATA: &[u8] = b"hello :)";
 
 #[test]
@@ -19,7 +24,7 @@ fn get_original_data_after_encrypting_and_decrypting() {
 #[should_panic]
 fn fail_to_decrypt_data_when_key_is_wrong() {
     let crypto1 = Crypto::new(KEY).unwrap();
-    let crypto2 = Crypto::new(&[KEY, b"nope"].concat()).unwrap();
+    let crypto2 = Crypto::new(&[KEY.as_bytes(), b"nope"].concat()).unwrap();
     let encrypted_data = crypto1.encrypt(PLAIN_DATA).unwrap();
     crypto2.decrypt(&encrypted_data).unwrap();
 }
@@ -53,7 +58,7 @@ fn fail_to_decrypt_file_when_key_is_wrong() {
     let tmp_dir = TmpDir::new().unwrap();
 
     let crypto1 = Crypto::new(KEY).unwrap();
-    let crypto2 = Crypto::new(&[KEY, b"nope"].concat()).unwrap();
+    let crypto2 = Crypto::new(&[KEY.as_bytes(), b"nope"].concat()).unwrap();
 
     tmp_dir.write_file("plain", PLAIN_DATA).unwrap();
 
@@ -98,3 +103,114 @@ fn walk_directory_and_encounter_every_file_in_it() {
             .find(|p| e == p)
             .is_some()));
 }
+
+// Tmp tests
+
+// TODO Add tmp tests
+
+// Commands tests
+
+#[test]
+fn encrypt_and_decrypt_one_file() {
+    let tmp_dir = TmpDir::new().unwrap();
+
+    tmp_dir.write_file("plain", b"Hello :)").unwrap();
+
+    let (success, _, _, _) = encrypt_file::execute(
+        &KEY.to_string(),
+        &vec![tmp_dir.path().join("plain")],
+        &Some(tmp_dir.path().join("enc")),
+        &false,
+        &false,
+    )
+    .unwrap();
+
+    assert_eq!(success, 1);
+    assert!(tmp_dir.exists("enc"));
+
+    let (success, _, _, _) = decrypt_file::execute(
+        &KEY.to_string(),
+        &vec![tmp_dir.path().join("enc")],
+        &Some(tmp_dir.path().join("dec")),
+        &false,
+        &false,
+    )
+    .unwrap();
+
+    assert_eq!(success, 1);
+    assert!(tmp_dir.exists("dec"));
+    assert_eq!(
+        tmp_dir.read_file("plain").unwrap(),
+        tmp_dir.read_file("dec").unwrap()
+    );
+}
+
+#[test]
+fn encrypt_and_decrypt_several_files() {
+    let tmp_dir = TmpDir::new().unwrap();
+
+    tmp_dir.create_dir_all("plain/c").unwrap();
+
+    tmp_dir.write_file("plain/a", b"a").unwrap();
+    tmp_dir.write_file("plain/b", b"b").unwrap();
+    tmp_dir.write_file("plain/c/a", b"c/a").unwrap();
+    tmp_dir.write_file("plain/c/b", b"c/b").unwrap();
+    tmp_dir.write_file("plain/d", b"d").unwrap();
+
+    let (success, _, _, _) = encrypt_file::execute(
+        &KEY.to_string(),
+        &vec![tmp_dir.path().join("plain")],
+        &Some(tmp_dir.path().join("enc")),
+        &false,
+        &false,
+    )
+    .unwrap();
+
+    assert_eq!(success, 5);
+
+    assert!(tmp_dir.exists("enc"));
+    assert_eq!(tmp_dir.read_dir("enc").unwrap().count(), 5);
+
+    let (success, _, _, _) = decrypt_file::execute(
+        &KEY.to_string(),
+        &vec![tmp_dir.path().join("enc")],
+        &Some(tmp_dir.path().join("dec")),
+        &false,
+        &false,
+    )
+    .unwrap();
+
+    assert_eq!(success, 5);
+
+    assert!(tmp_dir.exists("dec"));
+    assert!(tmp_dir.exists("dec/c"));
+
+    assert!(tmp_dir.exists("dec/a"));
+    assert!(tmp_dir.exists("dec/b"));
+    assert!(tmp_dir.exists("dec/c/a"));
+    assert!(tmp_dir.exists("dec/c/b"));
+    assert!(tmp_dir.exists("dec/d"));
+
+    assert_eq!(
+        tmp_dir.read_file("plain/a").unwrap(),
+        tmp_dir.read_file("dec/a").unwrap()
+    );
+    assert_eq!(
+        tmp_dir.read_file("plain/b").unwrap(),
+        tmp_dir.read_file("dec/b").unwrap()
+    );
+    assert_eq!(
+        tmp_dir.read_file("plain/c/a").unwrap(),
+        tmp_dir.read_file("dec/c/a").unwrap()
+    );
+    assert_eq!(
+        tmp_dir.read_file("plain/c/b").unwrap(),
+        tmp_dir.read_file("dec/c/b").unwrap()
+    );
+    assert_eq!(
+        tmp_dir.read_file("plain/d").unwrap(),
+        tmp_dir.read_file("dec/d").unwrap()
+    );
+}
+
+// TODO Add tests for encrypt/decrypt text
