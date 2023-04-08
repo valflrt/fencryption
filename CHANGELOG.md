@@ -1,5 +1,18 @@
 # Changelog
 
+> v1.0 coming soon ?
+
+## `v0.1.12`
+
+- Move commands to lib
+- Better cli code quality
+
+## `v0.1.11`
+
+- Fix potential security vulnerability by adding one nonce per chunk while keeping encrypted files size pretty low by making chunks longer (so that the chunk/nonce length ratio is low)
+- Remove packing feature
+- Greatly improve fencryption_lib documention
+
 ## `v0.1.10`
 
 - Add packing features

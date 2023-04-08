@@ -23,8 +23,6 @@
   - [Preview](#preview)
   - [Limitations/Issues](#limitationsissues)
   - [Roadmap](#roadmap)
-  - [Tests commands should pass](#tests-commands-should-pass)
-  - [Ideas](#ideas)
 - [fencryption-lib](#fencryption-lib)
 
 # Fencryption (binary)
@@ -169,28 +167,16 @@ Options:
 - [x] Implement multithreading
 - [x] Edit encryption process so the output file is smaller
 - [x] Add commands to enc/decrypt text/base64
-- [ ] Add packing related commands
 - [ ] Come up with a stable version (v1.0)
 
-## Tests commands should pass
-
-- encrypt and decrypt
-  - [x] encrypt/decrypt
-  - [x] can encrypt/decrypt several items at once
-  - [x] can set to a custom output path
-    - [x] only when there is one input path
-  - [x] overwrite when asked
-  - [x] delete original when asked
-  - [x] print debug log when asked
-
-## Ideas
+<!-- ## Ideas
 
 > things that **_could_** be added in the future
 
 - Packing: makes a file with all the files packed inside (a pack) that is then encrypted
   - Command `pack create` creates a pack from the contents of specified directory
   - Command `pack update` creates a directory where decrypted files (from the encrypted "pack") appear, you can then choose to update the pack with the changes made in the directory or to discard them
-  - Command `pack extract` extracts pack to the specified directory
+  - Command `pack extract` extracts pack to the specified directory -->
 
 # fencryption-lib
 
