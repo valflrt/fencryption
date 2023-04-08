@@ -4,7 +4,7 @@ use clap::{command, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "fencryption", version)]
-/// A program to encrypt/decrypt text, files and directories
+/// A program to encrypt/decrypt text and files
 pub struct Cli {
     #[clap(subcommand)]
     pub command: Commands,

@@ -35,7 +35,7 @@ Fencryption is program to encrypt and decrypt files and full directories. Note t
 
 **THERE IS ABSOLUTELY NO WARRANTY THAT THIS PROGRAM DOES NOT CONTAIN VULNERABILITIES. USE IT AT YOUR OWN RISK.**
 
-This program is not supposed to be used in "real conditions" because it is a mere personal project. Although I think above v1.0 the commands encrypt and decrypt should be pretty safe.
+This program is not supposed to be used in "real conditions" as it is a mere personal project. Although I think above v1.0 (not released yet) the commands encrypt and decrypt should be pretty safe.
 
 ## Preview
 
@@ -44,13 +44,13 @@ fencryption --help
 ```
 
 ```
-A program to encrypt/decrypt text, files and directories
+A program to encrypt/decrypt text and files
 
 Usage: fencryption [OPTIONS] <COMMAND>
 
 Commands:
-  encrypt  Encrypt text or files and directories
-  decrypt  Decrypt text or files and directories
+  encrypt  Encrypt text or files
+  decrypt  Decrypt text or files
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -59,9 +59,104 @@ Options:
   -V, --version  Print version
 ```
 
+<details>
+  <summary>encrypt file</summary>
+
+```
+fencryption encrypt file --help
+```
+
+```
+Encrypt files (and directories)
+
+Usage: fencryption encrypt file [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  Paths of files to encrypt
+
+Options:
+  -o, --output-path <OUTPUT_PATH>  Set output path (only supported when one input path is provided)
+  -O, --overwrite                  Overwrite output files
+  -d, --delete-original            Delete original files after encrypting
+  -D, --debug                      Enable debug log
+  -h, --help                       Print help
+```
+
+</details>
+
+<details>
+  <summary>decrypt file</summary>
+
+```
+fencryption decrypt file --help
+```
+
+```
+Decrypt files (and directories)
+
+Usage: fencryption decrypt file [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  Paths of files to encrypt
+
+Options:
+  -o, --output-path <OUTPUT_PATH>  Set output path (only supported when one input path is provided)
+  -O, --overwrite                  Overwrite output files
+  -d, --delete-original            Delete original files after decrypting
+  -D, --debug                      Enable debug log
+  -h, --help                       Print help
+```
+
+</details>
+
+<details>
+  <summary>encrypt text</summary>
+
+```
+fencryption encrypt text --help
+```
+
+```
+Encrypt text
+
+Usage: fencryption encrypt text [OPTIONS] <TEXT>
+
+Arguments:
+  <TEXT>  Text to encrypt
+
+Options:
+  -D, --debug  Enable debug log
+  -h, --help   Print help
+```
+
+</details>
+
+<details>
+  <summary>decrypt text</summary>
+
+```
+fencryption decrypt text --help
+```
+
+```
+Decrypt text
+
+Usage: fencryption decrypt text [OPTIONS] <ENCRYPTED>
+
+Arguments:
+  <ENCRYPTED>  Text to decrypt (in base64)
+
+Options:
+  -D, --debug  Enable debug log
+  -h, --help   Print help
+```
+
+</details>
+
 ## Limitations/Issues
 
-- Pack files can get pretty huge therefore it is possible that they exceed the maximum file size of some file systems (for example the maximum file size of fat32 is 4GB).
+<!-- - Pack files can get pretty huge therefore it is possible that they exceed the maximum file size of some file systems (for example the maximum file size of fat32 is 4GB). -->
+
 - When encrypting files, make sure to encrypt and decrypt them with the same version of fencryption (it is very likely that different versions will not work the same way)
 
 ## Roadmap

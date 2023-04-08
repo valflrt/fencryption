@@ -217,8 +217,8 @@ where
     hasher.finalize().to_vec()
 }
 
-fn random_iv() -> Vec<u8> {
+fn random_iv() -> [u8; IV_LEN] {
     let mut iv = [0; IV_LEN];
     OsRng.fill_bytes(&mut iv);
-    iv.to_vec()
+    iv
 }
