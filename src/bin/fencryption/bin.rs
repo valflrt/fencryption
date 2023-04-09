@@ -59,7 +59,7 @@ fn run(cli: &Cli) -> Result<()> {
                 paths,
                 output_path,
                 overwrite,
-                delete_original,
+                delete_encrypted,
                 debug,
             } => {
                 let key = prompt_key(false).map_err(|e| {
@@ -72,7 +72,7 @@ fn run(cli: &Cli) -> Result<()> {
                 log::println_info("Starting decryption...");
 
                 let (success, failures, skips, elapsed) =
-                    decrypt_file::execute(&key, paths, output_path, overwrite, delete_original)?;
+                    decrypt_file::execute(&key, paths, output_path, overwrite, delete_encrypted)?;
 
                 logic::log_stats(
                     success,

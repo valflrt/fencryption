@@ -41,11 +41,11 @@ pub enum EncryptCommands {
         #[arg(short, long)]
         output_path: Option<PathBuf>,
 
-        /// Overwrite output files and directories
+        /// Overwrite output
         #[clap(short = 'O', long)]
         overwrite: bool,
 
-        /// Delete original files and directories after encrypting
+        /// Delete original files after encrypting
         #[clap(short = 'd', long)]
         delete_original: bool,
 
@@ -64,7 +64,7 @@ pub enum EncryptCommands {
 pub enum DecryptCommands {
     /// Decrypt files and directories
     File {
-        /// Paths of files and directories to encrypt
+        /// Paths of files to encrypt
         #[arg(required = true)]
         paths: Vec<PathBuf>,
 
@@ -73,13 +73,13 @@ pub enum DecryptCommands {
         #[arg(short, long)]
         output_path: Option<PathBuf>,
 
-        /// Overwrite output files and directories
+        /// Overwrite output
         #[clap(short = 'O', long)]
         overwrite: bool,
 
-        /// Delete original files and directories after decrypting
+        /// Delete encrypted files after decrypting
         #[clap(short = 'd', long)]
-        delete_original: bool,
+        delete_encrypted: bool,
 
         #[clap(from_global)]
         debug: bool,

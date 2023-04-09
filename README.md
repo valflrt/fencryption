@@ -65,16 +65,16 @@ fencryption encrypt file --help
 ```
 
 ```
-Encrypt files (and directories)
+Encrypt files and directories
 
 Usage: fencryption encrypt file [OPTIONS] <PATHS>...
 
 Arguments:
-  <PATHS>...  Paths of files to encrypt
+  <PATHS>...  Paths of the files to encrypt
 
 Options:
   -o, --output-path <OUTPUT_PATH>  Set output path (only supported when one input path is provided)
-  -O, --overwrite                  Overwrite output files
+  -O, --overwrite                  Overwrite output
   -d, --delete-original            Delete original files after encrypting
   -D, --debug                      Enable debug log
   -h, --help                       Print help
@@ -90,7 +90,7 @@ fencryption decrypt file --help
 ```
 
 ```
-Decrypt files (and directories)
+Decrypt files and directories
 
 Usage: fencryption decrypt file [OPTIONS] <PATHS>...
 
@@ -99,8 +99,8 @@ Arguments:
 
 Options:
   -o, --output-path <OUTPUT_PATH>  Set output path (only supported when one input path is provided)
-  -O, --overwrite                  Overwrite output files
-  -d, --delete-original            Delete original files after decrypting
+  -O, --overwrite                  Overwrite output
+  -d, --delete-encrypted           Delete encrypted files after decrypting
   -D, --debug                      Enable debug log
   -h, --help                       Print help
 ```
@@ -142,7 +142,7 @@ Decrypt text
 Usage: fencryption decrypt text [OPTIONS] <ENCRYPTED>
 
 Arguments:
-  <ENCRYPTED>  Text to decrypt (in base64)
+  <ENCRYPTED>  Text to decrypt (base64 encoded)
 
 Options:
   -D, --debug  Enable debug log
