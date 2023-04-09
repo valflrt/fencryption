@@ -12,9 +12,6 @@ use crate::logic::prompt_key;
 mod cli;
 mod logic;
 
-// #[cfg(test)]
-// mod tests;
-
 fn run(cli: &Cli) -> Result<()> {
     match &cli.command {
         cli::Commands::Encrypt { command } => match command {
@@ -37,7 +34,14 @@ fn run(cli: &Cli) -> Result<()> {
                 let (success, failures, skips, elapsed) =
                     encrypt_file::execute(&key, paths, output_path, overwrite, delete_original)?;
 
-                logic::log_stats(success, failures, skips, elapsed, *debug, Command::Encrypt);
+                logic::log_stats(
+                    success,
+                    failures,
+                    skips,
+                    elapsed,
+                    *debug,
+                    Command::EncryptFile,
+                );
             }
             cli::EncryptCommands::Text { text } => {
                 let key = prompt_key(true).map_err(|e| {
@@ -70,7 +74,14 @@ fn run(cli: &Cli) -> Result<()> {
                 let (success, failures, skips, elapsed) =
                     decrypt_file::execute(&key, paths, output_path, overwrite, delete_original)?;
 
-                logic::log_stats(success, failures, skips, elapsed, *debug, Command::Encrypt);
+                logic::log_stats(
+                    success,
+                    failures,
+                    skips,
+                    elapsed,
+                    *debug,
+                    Command::EncryptFile,
+                );
             }
             cli::DecryptCommands::Text { encrypted } => {
                 let key = prompt_key(false).map_err(|e| {

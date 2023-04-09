@@ -11,7 +11,7 @@ use crate::{
     walk_dir::walk_dir,
 };
 
-/// Encrypts the given paths.
+/// Encrypts the files associated to the given paths.
 pub fn execute(
     key: &String,
     paths: &Vec<PathBuf>,
@@ -26,7 +26,7 @@ pub fn execute(
 )> {
     let timer = time::SystemTime::now();
 
-    let output_paths = logic::get_output_paths(&paths, &output_path, Command::Encrypt);
+    let output_paths = logic::get_output_paths(&paths, &output_path, Command::EncryptFile);
 
     logic::checks(&paths, &output_path)?;
     logic::overwrite(&output_paths, *overwrite)?;

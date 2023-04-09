@@ -7,7 +7,7 @@ use crate::{
     crypto::Crypto,
 };
 
-/// Decrypts given text (base64).
+/// Decrypts given text (from base64 encoded text).
 pub fn execute(key: &String, encrypted: &String) -> Result<String> {
     let crypto = Crypto::new(key).map_err(|e| {
         ErrorBuilder::new()

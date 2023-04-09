@@ -88,8 +88,8 @@ pub fn get_output_paths(
         .map(|p| match output_path {
             Some(p) => p.to_owned(),
             None => change_file_name(p, |s| match command {
-                Command::Encrypt => [s, ".enc"].concat(),
-                Command::Decrypt => {
+                Command::EncryptFile => [s, ".enc"].concat(),
+                Command::DecryptFile => {
                     if s.ends_with(".enc") {
                         s.replace(".enc", ".dec")
                     } else {

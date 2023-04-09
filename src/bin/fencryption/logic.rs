@@ -56,8 +56,8 @@ pub fn log_stats(
     log::println_success(format!(
         "{} {} file{} in {}",
         match command {
-            Command::Encrypt => "Encrypted",
-            Command::Decrypt => "Decrypted",
+            Command::EncryptFile => "Encrypted",
+            Command::DecryptFile => "Decrypted",
             // _ => panic!(),
         },
         success,
@@ -68,8 +68,8 @@ pub fn log_stats(
         log::println_error(format!(
             "Failed to {} {} file{}",
             match command {
-                Command::Encrypt => "encrypt",
-                Command::Decrypt => "decrypt",
+                Command::EncryptFile => "encrypt",
+                Command::DecryptFile => "decrypt",
                 // _ => panic!(),
             },
             failures.len(),

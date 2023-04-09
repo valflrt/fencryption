@@ -16,12 +16,12 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Encrypt text or files and directories
+    /// Encrypt text or files
     Encrypt {
         #[clap(subcommand)]
         command: EncryptCommands,
     },
-    /// Decrypt text or files and directories
+    /// Decrypt text or files
     Decrypt {
         #[clap(subcommand)]
         command: DecryptCommands,
@@ -30,8 +30,9 @@ pub enum Commands {
 
 #[derive(Subcommand)]
 pub enum EncryptCommands {
+    /// Encrypt files and directories
     File {
-        /// Paths of files and directories to encrypt
+        /// Paths of the files to encrypt
         #[arg(required = true)]
         paths: Vec<PathBuf>,
 
@@ -51,6 +52,7 @@ pub enum EncryptCommands {
         #[clap(from_global)]
         debug: bool,
     },
+    /// Encrypt text
     Text {
         /// Text to encrypt
         #[arg(required = true)]
@@ -60,6 +62,7 @@ pub enum EncryptCommands {
 
 #[derive(Subcommand)]
 pub enum DecryptCommands {
+    /// Decrypt files and directories
     File {
         /// Paths of files and directories to encrypt
         #[arg(required = true)]
@@ -81,8 +84,9 @@ pub enum DecryptCommands {
         #[clap(from_global)]
         debug: bool,
     },
+    /// Decrypt text
     Text {
-        /// Text to decrypt (in base64)
+        /// Text to decrypt (base64 encoded)
         #[arg(required = true)]
         encrypted: String,
     },

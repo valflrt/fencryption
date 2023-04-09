@@ -5,18 +5,19 @@ pub mod decrypt_text;
 pub mod encrypt_file;
 pub mod encrypt_text;
 
-pub mod logic;
+mod logic;
 
+/// Command enum.
 pub enum Command {
-    Encrypt,
-    Decrypt,
-    // Pack,
-    // Unpack,
+    EncryptFile,
+    DecryptFile,
 }
 
+/// Command execution Result.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug)]
+/// Command execution Error.
 pub struct Error {
     message: String,
     debug: String,
@@ -34,6 +35,7 @@ impl Error {
     }
 }
 
+/// Command execution Error builder.
 pub struct ErrorBuilder {
     message: Option<String>,
     debug: Option<String>,

@@ -2,6 +2,11 @@
 
 > v1.0 coming soon ?
 
+## `v0.1.13`
+
+- Fix cli text
+- Improve docs
+
 ## `v0.1.12`
 
 - Move commands to lib

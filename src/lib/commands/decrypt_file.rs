@@ -10,7 +10,7 @@ use crate::{
     walk_dir::walk_dir,
 };
 
-/// Decrypts the given paths.
+/// Decrypts the files associated to the given paths.
 pub fn execute(
     key: &String,
     paths: &Vec<PathBuf>,
@@ -25,7 +25,7 @@ pub fn execute(
 )> {
     let timer = time::SystemTime::now();
 
-    let output_paths = logic::get_output_paths(&paths, &output_path, Command::Decrypt);
+    let output_paths = logic::get_output_paths(&paths, &output_path, Command::DecryptFile);
 
     logic::checks(&paths, &output_path)?;
     logic::overwrite(&output_paths, *overwrite)?;
