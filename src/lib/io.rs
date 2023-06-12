@@ -73,22 +73,19 @@ impl<R1: Read, R2: Read> Read for Chain<R1, R2> {
     /// [20, 21, 20, 4e, 65, 76, 65, 72, 20, 67, 6f, 6e, 6e, 61, 20, 6c] 16
     /// [65, 74, 20, 79, 6f, 75, 20, 64, 6f, 77, 6e, 20, 21] 13
     /// ```
-    fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, mut out_buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.first {
             Some(first) => {
-                let buf_len = buf.len();
-                match first.read(&mut buf)? {
+                let buf_len = out_buf.len();
+                match first.read(&mut out_buf)? {
                     n if n < buf_len => {
-                        let mut from_second = vec![0u8; buf_len - n];
-                        let n2 = self.second.read(&mut from_second)?;
-                        buf.write(&[&buf[..n], &from_second].concat())?;
                         self.first = None;
-                        Ok(n + n2)
+                        Ok(n + self.second.read(&mut out_buf[n..])?)
                     }
                     n => Ok(n),
                 }
             }
-            None => Ok(self.second.read(buf)?),
+            None => Ok(self.second.read(out_buf)?),
         }
     }
 }
