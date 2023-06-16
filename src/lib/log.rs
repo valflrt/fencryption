@@ -20,7 +20,7 @@ where
         "{} {}",
         line_start.as_ref(),
         text.as_ref()
-            .replace("\n", &["\n", line_start.as_ref(), " "].concat())
+            .replace('\n', &["\n", line_start.as_ref(), " "].concat())
     )
 }
 

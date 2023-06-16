@@ -23,7 +23,7 @@ fn run(cli: &Cli) -> Result<()> {
                 debug,
             } => {
                 let key = prompt_key(true).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to read key")
                         .error(e)
                         .build()
@@ -45,7 +45,7 @@ fn run(cli: &Cli) -> Result<()> {
             }
             cli::EncryptCommands::Text { text } => {
                 let key = prompt_key(true).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to read key")
                         .error(e)
                         .build()
@@ -63,7 +63,7 @@ fn run(cli: &Cli) -> Result<()> {
                 debug,
             } => {
                 let key = prompt_key(false).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to read key")
                         .error(e)
                         .build()
@@ -85,7 +85,7 @@ fn run(cli: &Cli) -> Result<()> {
             }
             cli::DecryptCommands::Text { encrypted } => {
                 let key = prompt_key(false).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to read key")
                         .error(e)
                         .build()

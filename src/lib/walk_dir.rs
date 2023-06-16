@@ -30,19 +30,19 @@ impl Iterator for WalkDirIterator {
                 Some(Ok(entry)) => match entry.file_type() {
                     Ok(file_type) => {
                         if file_type.is_dir() {
-                            self.levels.push(match fs::read_dir(&entry.path()) {
+                            self.levels.push(match fs::read_dir(entry.path()) {
                                 Ok(v) => v,
                                 Err(e) => return Some(Err(e)),
                             });
                         }
-                        return Some(Ok(entry));
+                        Some(Ok(entry))
                     }
-                    Err(e) => return Some(Err(e)),
+                    Err(e) => Some(Err(e)),
                 },
-                Some(Err(e)) => return Some(Err(e)),
+                Some(Err(e)) => Some(Err(e)),
                 None => {
                     self.levels.pop();
-                    return self.next();
+                    self.next()
                 }
             },
             None => None,

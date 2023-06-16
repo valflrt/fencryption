@@ -25,9 +25,9 @@ pub fn execute(
 )> {
     let timer = time::SystemTime::now();
 
-    let output_paths = logic::get_output_paths(&paths, &output_path, Command::DecryptFile);
+    let output_paths = logic::get_output_paths(paths, output_path, Command::DecryptFile);
 
-    logic::checks(&paths, &output_path)?;
+    logic::checks(paths, output_path)?;
     logic::overwrite(&output_paths, *overwrite)?;
 
     let mut success: u32 = 0;
@@ -35,7 +35,7 @@ pub fn execute(
     let mut skips: Vec<(PathBuf, Error)> = Vec::new();
 
     let crypto = Crypto::new(key).map_err(|e| {
-        ErrorBuilder::new()
+        ErrorBuilder::default()
             .message("Failed to initialize encryption utils")
             .error(e)
             .build()
@@ -45,14 +45,14 @@ pub fn execute(
         match main_input_path.to_owned() {
             dir_path if dir_path.is_dir() => {
                 fs::create_dir(&main_output_path).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to create output directory")
                         .error(e)
                         .build()
                 })?;
 
                 let walk_dir = walk_dir(&dir_path).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to read directory")
                         .error(e)
                         .build()
@@ -64,7 +64,7 @@ pub fn execute(
 
                 for dir_entry in walk_dir {
                     let entry = dir_entry.map_err(|e| {
-                        ErrorBuilder::new()
+                        ErrorBuilder::default()
                             .message("Failed to read directory entry")
                             .error(e)
                             .build()
@@ -92,7 +92,9 @@ pub fn execute(
                             if !input_path.is_dir() {
                                 skips.push((
                                     input_path,
-                                    ErrorBuilder::new().message("Unknown entry type").build(),
+                                    ErrorBuilder::default()
+                                        .message("Unknown entry type")
+                                        .build(),
                                 ));
                             }
                         }
@@ -119,7 +121,9 @@ pub fn execute(
             }
             path => skips.push((
                 path,
-                ErrorBuilder::new().message("Unknown entry type").build(),
+                ErrorBuilder::default()
+                    .message("Unknown entry type")
+                    .build(),
             )),
         }
 
@@ -131,7 +135,7 @@ pub fn execute(
         failures,
         skips,
         timer.elapsed().map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to get elapsed time")
                 .error(e)
                 .build()

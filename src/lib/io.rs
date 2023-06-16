@@ -10,7 +10,7 @@ pub fn stream(from: &mut impl Read, to: &mut impl Write) -> io::Result<()> {
     let mut buffer = [0u8; DEFAULT_BUF_LEN];
     loop {
         let read_len = from.read(&mut buffer)?;
-        to.write(&buffer[..read_len])?;
+        to.write_all(&buffer[..read_len])?;
         if read_len != DEFAULT_BUF_LEN {
             break;
         }
@@ -73,11 +73,11 @@ impl<R1: Read, R2: Read> Read for Chain<R1, R2> {
     /// [20, 21, 20, 4e, 65, 76, 65, 72, 20, 67, 6f, 6e, 6e, 61, 20, 6c] 16
     /// [65, 74, 20, 79, 6f, 75, 20, 64, 6f, 77, 6e, 20, 21] 13
     /// ```
-    fn read(&mut self, mut out_buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, out_buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.first {
             Some(first) => {
                 let buf_len = out_buf.len();
-                match first.read(&mut out_buf)? {
+                match first.read(out_buf)? {
                     n if n < buf_len => {
                         self.first = None;
                         Ok(n + self.second.read(&mut out_buf[n..])?)

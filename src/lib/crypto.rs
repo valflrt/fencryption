@@ -42,18 +42,16 @@ impl Crypto {
 
     /// Encrypt bytes with initialisation vector.
     pub fn encrypt_with_iv(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
-        Ok(self
-            .cipher
+        self.cipher
             .encrypt(Nonce::from_slice(iv), plaintext)
-            .map_err(|e| ErrorKind::AesError(e))?)
+            .map_err(ErrorKind::AesError)
     }
 
     /// Decrypt bytes with initialisation vector.
     pub fn decrypt_with_iv(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
-        Ok(self
-            .cipher
+        self.cipher
             .decrypt(Nonce::from_slice(iv), ciphertext)
-            .map_err(|e| ErrorKind::AesError(e))?)
+            .map_err(ErrorKind::AesError)
     }
 
     /// Encrypt a small piece of data.
@@ -140,9 +138,9 @@ impl Crypto {
         let mut buffer = [0u8; ENC_CHUNK_LEN];
 
         loop {
-            let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
+            let read_len = source.read(&mut buffer).map_err(ErrorKind::Io)?;
             dest.write_all(&self.encrypt(&buffer[..read_len])?)
-                .map_err(|e| ErrorKind::Io(e))?;
+                .map_err(ErrorKind::Io)?;
             // Stops when the loop reached the end of the file
             if read_len != ENC_CHUNK_LEN {
                 break;
@@ -195,9 +193,9 @@ impl Crypto {
         let mut buffer = [0u8; DEC_CHUNK_LEN];
 
         loop {
-            let read_len = source.read(&mut buffer).map_err(|e| ErrorKind::Io(e))?;
+            let read_len = source.read(&mut buffer).map_err(ErrorKind::Io)?;
             dest.write_all(&self.decrypt(&buffer[..read_len])?)
-                .map_err(|e| ErrorKind::Io(e))?;
+                .map_err(ErrorKind::Io)?;
             // Stops when the loop reached the end of the file.
             if read_len != DEC_CHUNK_LEN {
                 break;

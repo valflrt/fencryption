@@ -10,7 +10,7 @@ use crate::{
 /// Encrypts given text (encoded to base64).
 pub fn execute(key: &String, text: &String) -> Result<String> {
     let crypto = Crypto::new(key).map_err(|e| {
-        ErrorBuilder::new()
+        ErrorBuilder::default()
             .message("Failed to initialize encryption utils")
             .error(e)
             .build()
@@ -19,7 +19,7 @@ pub fn execute(key: &String, text: &String) -> Result<String> {
     let plain = text.as_bytes();
 
     let enc = crypto.encrypt(plain).map_err(|e| {
-        ErrorBuilder::new()
+        ErrorBuilder::default()
             .message("Failed to encrypt text")
             .error(e)
             .build()

@@ -36,19 +36,13 @@ impl Error {
 }
 
 /// Command execution Error builder.
+#[derive(Default)]
 pub struct ErrorBuilder {
     message: Option<String>,
     debug: Option<String>,
 }
 
 impl ErrorBuilder {
-    pub fn new() -> Self {
-        ErrorBuilder {
-            message: None,
-            debug: None,
-        }
-    }
-
     pub fn message<S>(mut self, message: S) -> Self
     where
         S: AsRef<str>,

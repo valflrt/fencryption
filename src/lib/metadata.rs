@@ -21,7 +21,7 @@ pub fn encode<D>(data: D) -> Result<Vec<u8>>
 where
     D: Serialize,
 {
-    Ok(rmp_serde::to_vec(&data).map_err(|e| ErrorKind::SerializeError(e))?)
+    rmp_serde::to_vec(&data).map_err(ErrorKind::SerializeError)
 }
 
 /// Decode bytes into specified [`serde::Deserialize`] implementor.
@@ -29,5 +29,5 @@ pub fn decode<O>(bytes: &[u8]) -> Result<O>
 where
     O: for<'a> Deserialize<'a>,
 {
-    Ok(rmp_serde::from_slice::<O>(&bytes.to_vec()).map_err(|e| ErrorKind::DeserializeError(e))?)
+    rmp_serde::from_slice::<O>(bytes).map_err(ErrorKind::DeserializeError)
 }

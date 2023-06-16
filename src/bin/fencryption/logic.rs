@@ -13,7 +13,7 @@ pub struct PathMetadata(PathBuf);
 
 pub fn prompt_key(double_check: bool) -> Result<String> {
     let key = prompt_password(log::format_info("Enter key: ")).map_err(|e| {
-        ErrorBuilder::new()
+        ErrorBuilder::default()
             .message("Failed to read key")
             .error(e)
             .build()
@@ -21,20 +21,22 @@ pub fn prompt_key(double_check: bool) -> Result<String> {
 
     if double_check {
         let confirm_key = prompt_password(log::format_info("Confirm key: ")).map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to read confirm key")
                 .error(e)
                 .build()
         })?;
 
         if key.ne(&confirm_key) {
-            return Err(ErrorBuilder::new()
+            return Err(ErrorBuilder::default()
                 .message("The two keys don't match")
                 .build());
         };
 
-        if key.len() < 1 {
-            return Err(ErrorBuilder::new().message("You must set a key").build());
+        if key.is_empty() {
+            return Err(ErrorBuilder::default()
+                .message("You must set a key")
+                .build());
         };
 
         if key.len() < 6 {

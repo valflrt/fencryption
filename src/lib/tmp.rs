@@ -130,7 +130,7 @@ impl TmpDir {
     where
         P: AsRef<Path>,
     {
-        fs::read_dir(&self.0.join(path))
+        fs::read_dir(self.0.join(path))
     }
 
     /// Remove a file in the current directory. Akin to
@@ -139,7 +139,7 @@ impl TmpDir {
     where
         P: AsRef<Path>,
     {
-        fs::remove_file(&self.0.join(path))
+        fs::remove_file(self.0.join(path))
     }
 
     /// Remove a directory in the current directory. Akin to
@@ -148,7 +148,7 @@ impl TmpDir {
     where
         P: AsRef<Path>,
     {
-        fs::remove_dir(&self.0.join(path))
+        fs::remove_dir(self.0.join(path))
     }
 
     /// Remove a directory and all its contents in the current
@@ -157,7 +157,7 @@ impl TmpDir {
     where
         P: AsRef<Path>,
     {
-        fs::remove_dir_all(&self.0.join(path))
+        fs::remove_dir_all(self.0.join(path))
     }
 }
 
@@ -179,7 +179,7 @@ impl TmpFile {
     /// Create a new TmpFile instance.
     pub fn new() -> Result<Self, io::Error> {
         let path = env::temp_dir().join(uuid::Uuid::new_v4().to_string());
-        fs::write(&path, &[])?;
+        fs::write(&path, [])?;
         Ok(TmpFile(path))
     }
 

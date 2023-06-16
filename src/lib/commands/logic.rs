@@ -39,20 +39,20 @@ pub fn checks<P>(input_paths: P, output_path: &Option<PathBuf>) -> Result<()>
 where
     P: AsRef<Vec<PathBuf>>,
 {
-    if input_paths.as_ref().len() == 0 {
-        return Err(ErrorBuilder::new()
+    if input_paths.as_ref().is_empty() {
+        return Err(ErrorBuilder::default()
             .message("Please provide at least one path")
             .build());
     }
 
     if input_paths.as_ref().iter().any(|p| !p.exists()) {
-        return Err(ErrorBuilder::new()
+        return Err(ErrorBuilder::default()
             .message("I can't work with files that don't exist")
             .build());
     }
 
     if output_path.as_ref().is_some() && input_paths.as_ref().len() != 1 {
-        return Err(ErrorBuilder::new()
+        return Err(ErrorBuilder::default()
             .message("Only one input path can be provided when setting an output path")
             .build());
     }
@@ -79,7 +79,7 @@ where
 }
 
 pub fn get_output_paths(
-    paths: &Vec<PathBuf>,
+    paths: &[PathBuf],
     output_path: &Option<PathBuf>,
     command: Command,
 ) -> Vec<PathBuf> {
@@ -109,15 +109,15 @@ where
         println!("{:#?}, {}", paths.as_ref()[0], paths.as_ref()[0].exists());
         if overwrite {
             for path in paths.as_ref() {
-                delete_entry(&path).map_err(|e| {
-                    ErrorBuilder::new()
+                delete_entry(path).map_err(|e| {
+                    ErrorBuilder::default()
                         .message("Failed to overwrite file/directory, please do it yourself")
                         .error(e)
                         .build()
                 })?
             }
         } else {
-            return Err(ErrorBuilder::new()
+            return Err(ErrorBuilder::default()
                 .message("The output file/directory already exists (use \"--overwrite\"/\"-O\" to force overwrite)")
                 .build());
         }
@@ -132,7 +132,7 @@ where
 {
     if delete_original && path.as_ref().exists() {
         delete_entry(path.as_ref()).map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to delete original file/directory, please do it yourself")
                 .error(e)
                 .build()
@@ -148,14 +148,14 @@ where
 {
     if path.as_ref().is_dir() {
         fs::remove_dir_all(path.as_ref()).map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to remove directory, please do it yourself")
                 .error(e)
                 .build()
         })?;
     } else if path.as_ref().is_file() {
         fs::remove_file(path.as_ref()).map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to remove file, please do it yourself")
                 .error(e)
                 .build()
@@ -183,7 +183,7 @@ where
         .read(true)
         .open(&input_path)
         .map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to read source file")
                 .error(e)
                 .build()
@@ -194,7 +194,7 @@ where
         .create(true)
         .open(&output_path)
         .map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to open/create destination file")
                 .error(e)
                 .build()
@@ -202,14 +202,14 @@ where
 
     if let Some(p) = relative_path {
         let metadata = metadata::encode(PathMetadata::new(p)).map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to encode file metadata")
                 .error(e)
                 .build()
         })?;
 
         let encrypted_metadata = crypto.encrypt(metadata).map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to encrypt metadata")
                 .error(e)
                 .build()
@@ -223,7 +223,7 @@ where
             .concat(),
         )
         .map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to write metadata")
                 .error(e)
                 .build()
@@ -231,7 +231,7 @@ where
     };
 
     crypto.encrypt_io(&mut source, &mut dest).map_err(|e| {
-        ErrorBuilder::new()
+        ErrorBuilder::default()
             .message(match e {
                 crypto::ErrorKind::AesError(_) => "Failed to encrypt file (key must be wrong)",
                 _ => "Failed to encrypt file",
@@ -255,7 +255,7 @@ where
         .read(true)
         .open(&input_path)
         .map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to read source file")
                 .error(e)
                 .build()
@@ -266,7 +266,7 @@ where
         OutputDecPath::Parent(p) => {
             let mut len_bytes = [0u8; 2];
             source.read_exact(&mut len_bytes).map_err(|e| {
-                ErrorBuilder::new()
+                ErrorBuilder::default()
                     .message("Failed to get encrypted metadata length")
                     .error(e)
                     .build()
@@ -274,21 +274,21 @@ where
             let len = u16::from_be_bytes(len_bytes) as usize;
             let mut metadata_bytes = vec![0u8; len];
             source.read_exact(&mut metadata_bytes).map_err(|e| {
-                ErrorBuilder::new()
+                ErrorBuilder::default()
                     .message("Failed to get encrypted metadata")
                     .error(e)
                     .build()
             })?;
             let metadata = metadata::decode::<PathMetadata>(
                 &crypto.decrypt(&metadata_bytes).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to decrypt metadata")
                         .error(e)
                         .build()
                 })?,
             )
             .map_err(|e| {
-                ErrorBuilder::new()
+                ErrorBuilder::default()
                     .message("Failed to decode metadata")
                     .error(e)
                     .build()
@@ -297,7 +297,7 @@ where
             let path = p.join(metadata.path());
             if let Some(p) = path.parent() {
                 fs::create_dir_all(p).map_err(|e| {
-                    ErrorBuilder::new()
+                    ErrorBuilder::default()
                         .message("Failed to create sub-directory")
                         .error(e)
                         .build()
@@ -310,16 +310,16 @@ where
     let mut dest = OpenOptions::new()
         .write(true)
         .create(true)
-        .open(&output_path)
+        .open(output_path)
         .map_err(|e| {
-            ErrorBuilder::new()
+            ErrorBuilder::default()
                 .message("Failed to open/create destination file")
                 .error(e)
                 .build()
         })?;
 
     crypto.decrypt_io(&mut source, &mut dest).map_err(|e| {
-        ErrorBuilder::new()
+        ErrorBuilder::default()
             .message(match e {
                 crypto::ErrorKind::AesError(_) => "Failed to decrypt file (key must be wrong)",
                 _ => "Failed to decrypt file",

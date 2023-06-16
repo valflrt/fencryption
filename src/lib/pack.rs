@@ -63,18 +63,18 @@ where
         .write(true)
         .create(true)
         .open(output_dir_path.as_ref())
-        .map_err(|e| ErrorKind::Io(e))?;
+        .map_err(ErrorKind::Io)?;
 
-    let walk_dir = walk_dir(&input_dir_path).map_err(|e| ErrorKind::Io(e))?;
+    let walk_dir = walk_dir(&input_dir_path).map_err(ErrorKind::Io)?;
 
     for entry in walk_dir {
-        let entry = entry.map_err(|e| ErrorKind::Io(e))?;
+        let entry = entry.map_err(ErrorKind::Io)?;
 
         if entry.path().is_file() {
             let mut source = OpenOptions::new()
                 .read(true)
                 .open(entry.path())
-                .map_err(|e| ErrorKind::Io(e))?;
+                .map_err(ErrorKind::Io)?;
 
             // Creates file header.
             let metadata = metadata::encode(PackEntryMetadata::new(
@@ -82,9 +82,9 @@ where
                     .as_ref()
                     .strip_prefix(entry.path())
                     .map_err(|_| ErrorKind::PathError)?,
-                entry.metadata().map_err(|e| ErrorKind::Io(e))?.len(),
+                entry.metadata().map_err(ErrorKind::Io)?.len(),
             ))
-            .map_err(|e| ErrorKind::MetadataError(e))?;
+            .map_err(ErrorKind::MetadataError)?;
 
             // Writes file header to the pack.
             dest.write_all(
@@ -94,9 +94,9 @@ where
                 ]
                 .concat(),
             )
-            .map_err(|e| ErrorKind::Io(e))?;
+            .map_err(ErrorKind::Io)?;
 
-            stream(&mut source, &mut dest).map_err(|e| ErrorKind::Io(e))?;
+            stream(&mut source, &mut dest).map_err(ErrorKind::Io)?;
         }
     }
 
@@ -113,26 +113,24 @@ where
     let mut source = OpenOptions::new()
         .read(true)
         .open(input_dir_path.as_ref())
-        .map_err(|e| ErrorKind::Io(e))?;
+        .map_err(ErrorKind::Io)?;
 
     loop {
         let mut len_bytes = [0u8; 2];
-        source
-            .read_exact(&mut len_bytes)
-            .map_err(|e| ErrorKind::Io(e))?;
+        source.read_exact(&mut len_bytes).map_err(ErrorKind::Io)?;
         let len = u16::from_be_bytes(len_bytes) as usize;
         let mut metadata_bytes = vec![0u8; len];
         source
             .read_exact(&mut metadata_bytes)
-            .map_err(|e| ErrorKind::Io(e))?;
+            .map_err(ErrorKind::Io)?;
         let metadata = metadata::decode::<PackEntryMetadata>(&metadata_bytes)
-            .map_err(|e| ErrorKind::MetadataError(e))?;
+            .map_err(ErrorKind::MetadataError)?;
 
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .open(output_dir_path.as_ref().join(metadata.path()))
-            .map_err(|e| ErrorKind::Io(e))?;
+            .map_err(ErrorKind::Io)?;
 
         let file_len = metadata.file_len();
 
@@ -147,16 +145,14 @@ where
         // file.
         let mut buffer = [0u8; DEFAULT_BUF_LEN];
         for _ in 0..chunks {
-            source
-                .read_exact(&mut buffer)
-                .map_err(|e| ErrorKind::Io(e))?;
-            file.write_all(&buffer).map_err(|e| ErrorKind::Io(e))?;
+            source.read_exact(&mut buffer).map_err(ErrorKind::Io)?;
+            file.write_all(&buffer).map_err(ErrorKind::Io)?;
         }
 
         // Reads the remaining bytes and writes them to
         // the output file.
         let mut last = vec![0u8; rem_len];
-        source.read_exact(&mut last).map_err(|e| ErrorKind::Io(e))?;
-        file.write_all(&last).map_err(|e| ErrorKind::Io(e))?;
+        source.read_exact(&mut last).map_err(ErrorKind::Io)?;
+        file.write_all(&last).map_err(ErrorKind::Io)?;
     }
 }
