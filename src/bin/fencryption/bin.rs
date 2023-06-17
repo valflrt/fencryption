@@ -1,16 +1,22 @@
 use clap::Parser;
-use cli::Cli;
-use fencryption_lib::{
-    commands::{
-        decrypt_file, decrypt_text, encrypt_file, encrypt_text, Command, ErrorBuilder, Result,
-    },
-    log,
+use fencryption_lib::log;
+
+use crate::{
+    cli::Cli,
+    commands::{decrypt_file, decrypt_text, encrypt_file, encrypt_text},
+    error::Result,
+    logic::prompt_key,
 };
 
-use crate::logic::prompt_key;
-
 mod cli;
+mod commands;
+mod error;
 mod logic;
+mod text;
+mod warn;
+
+#[cfg(test)]
+mod tests;
 
 fn run(cli: &Cli) -> Result<()> {
     match &cli.command {
@@ -22,36 +28,18 @@ fn run(cli: &Cli) -> Result<()> {
                 delete_original,
                 debug,
             } => {
-                let key = prompt_key(true).map_err(|e| {
-                    ErrorBuilder::default()
-                        .message("Failed to read key")
-                        .error(e)
-                        .build()
-                })?;
+                let key = prompt_key(true)?;
 
-                log::println_info("Starting encryption...");
+                let output = encrypt_file(key, paths, output_path, *overwrite, *delete_original)?;
 
-                let (success, failures, skips, elapsed) =
-                    encrypt_file::execute(&key, paths, output_path, overwrite, delete_original)?;
-
-                logic::log_stats(
-                    success,
-                    failures,
-                    skips,
-                    elapsed,
-                    *debug,
-                    Command::EncryptFile,
-                );
+                logic::log_stats(output, *debug);
             }
             cli::EncryptCommands::Text { text } => {
-                let key = prompt_key(true).map_err(|e| {
-                    ErrorBuilder::default()
-                        .message("Failed to read key")
-                        .error(e)
-                        .build()
-                })?;
-                let enc = encrypt_text::execute(&key, text)?;
-                log::println_success(format!("Successfully encrypted text: base64 {}", enc));
+                let key = prompt_key(true)?;
+
+                let output = encrypt_text(key, text)?;
+
+                logic::log_stats(output, false);
             }
         },
         cli::Commands::Decrypt { command } => match command {
@@ -59,39 +47,21 @@ fn run(cli: &Cli) -> Result<()> {
                 paths,
                 output_path,
                 overwrite,
-                delete_encrypted,
+                delete_original,
                 debug,
             } => {
-                let key = prompt_key(false).map_err(|e| {
-                    ErrorBuilder::default()
-                        .message("Failed to read key")
-                        .error(e)
-                        .build()
-                })?;
+                let key = prompt_key(false)?;
 
-                log::println_info("Starting decryption...");
+                let output = decrypt_file(key, paths, output_path, *overwrite, *delete_original)?;
 
-                let (success, failures, skips, elapsed) =
-                    decrypt_file::execute(&key, paths, output_path, overwrite, delete_encrypted)?;
-
-                logic::log_stats(
-                    success,
-                    failures,
-                    skips,
-                    elapsed,
-                    *debug,
-                    Command::EncryptFile,
-                );
+                logic::log_stats(output, *debug);
             }
             cli::DecryptCommands::Text { encrypted } => {
-                let key = prompt_key(false).map_err(|e| {
-                    ErrorBuilder::default()
-                        .message("Failed to read key")
-                        .error(e)
-                        .build()
-                })?;
-                let dec = decrypt_text::execute(&key, encrypted)?;
-                log::println_success(format!("Successfully decrypted text: \"{}\"", dec));
+                let key = prompt_key(false)?;
+
+                let output = decrypt_text(key, encrypted)?;
+
+                logic::log_stats(output, false);
             }
         },
     }

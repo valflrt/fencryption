@@ -30,14 +30,14 @@ pub struct Crypto {
 impl Crypto {
     /// Create a new [`Crypto`] instance, the given key will be
     /// used for every operation performed.
-    pub fn new<K>(key: K) -> Result<Crypto, ErrorKind>
+    pub fn new<K>(key: K) -> Crypto
     where
         K: AsRef<[u8]>,
     {
         let key = hash_key(key.as_ref());
-        Ok(Crypto {
+        Crypto {
             cipher: Aes256Gcm::new_from_slice(&key).unwrap(),
-        })
+        }
     }
 
     /// Encrypt bytes with initialisation vector.
@@ -64,7 +64,7 @@ impl Crypto {
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
     ///
-    /// let crypto = Crypto::new(my_super_key).unwrap();
+    /// let crypto = Crypto::new(my_super_key);
     ///
     /// let enc = crypto.encrypt(my_super_secret_message).unwrap();
     ///
@@ -88,7 +88,7 @@ impl Crypto {
     /// let my_super_key = "this_is_super_secure".as_bytes();
     /// let my_super_secret_message = "hello :)".as_bytes();
     ///
-    /// let crypto = Crypto::new(my_super_key).unwrap();
+    /// let crypto = Crypto::new(my_super_key);
     ///
     /// let enc = crypto.encrypt(my_super_secret_message).unwrap();
     /// let dec = crypto.decrypt(&enc).unwrap();
@@ -119,7 +119,7 @@ impl Crypto {
     /// let my_super_secret_message = b"hello :)";
     ///
     /// let tmp_dir = TmpDir::new().unwrap();
-    /// let crypto = Crypto::new(my_super_key).unwrap();
+    /// let crypto = Crypto::new(my_super_key);
     ///
     /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///
@@ -166,7 +166,7 @@ impl Crypto {
     /// let my_super_secret_message = b"hello :)";
     ///
     /// let tmp_dir = TmpDir::new().unwrap();
-    /// let crypto = Crypto::new(my_super_key).unwrap();
+    /// let crypto = Crypto::new(my_super_key);
     ///
     /// tmp_dir.write_file("plain", my_super_secret_message).unwrap();
     ///

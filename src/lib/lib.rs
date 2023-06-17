@@ -1,6 +1,5 @@
 //! This is the lib for fencryption (binary crate).
 
-pub mod commands;
 pub mod crypto;
 pub mod io;
 pub mod log;
