@@ -1,6 +1,6 @@
 //! Encode and decode metadata.
 
-use std::{collections::TryReserveError, fmt::Debug, io};
+use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
@@ -9,9 +9,6 @@ use serde::{Deserialize, Serialize};
 pub enum ErrorKind {
     SerializeError(rmp_serde::encode::Error),
     DeserializeError(rmp_serde::decode::Error),
-    IoError(io::Error),
-    DecodeInt,
-    TryReserveError(TryReserveError),
 }
 
 type Result<T, E = ErrorKind> = std::result::Result<T, E>;
@@ -24,7 +21,8 @@ where
     rmp_serde::to_vec(&data).map_err(ErrorKind::SerializeError)
 }
 
-/// Decode bytes into specified [`serde::Deserialize`] implementor.
+/// Decode bytes into specified [`serde::Deserialize`]
+/// implementor.
 pub fn decode<O>(bytes: &[u8]) -> Result<O>
 where
     O: for<'a> Deserialize<'a>,

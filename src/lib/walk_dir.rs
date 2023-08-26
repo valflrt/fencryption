@@ -27,19 +27,14 @@ impl Iterator for WalkDirIterator {
     fn next(&mut self) -> Option<Self::Item> {
         match self.levels.last_mut() {
             Some(current_dir) => match current_dir.next() {
-                Some(Ok(entry)) => match entry.file_type() {
-                    Ok(file_type) => {
+                Some(entry_result) => Some(entry_result.and_then(|entry| {
+                    entry.file_type().and_then(|file_type| {
                         if file_type.is_dir() {
-                            self.levels.push(match fs::read_dir(entry.path()) {
-                                Ok(v) => v,
-                                Err(e) => return Some(Err(e)),
-                            });
+                            self.levels.push(fs::read_dir(entry.path())?);
                         }
-                        Some(Ok(entry))
-                    }
-                    Err(e) => Some(Err(e)),
-                },
-                Some(Err(e)) => Some(Err(e)),
+                        Ok(entry)
+                    })
+                })),
                 None => {
                     self.levels.pop();
                     self.next()

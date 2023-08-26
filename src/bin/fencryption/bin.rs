@@ -34,6 +34,7 @@ fn run(cli: &Cli) -> Result<()> {
                 let (success, failures, skips, elapsed) =
                     encrypt_file::execute(&key, paths, output_path, overwrite, delete_original)?;
 
+                util::log_stats(output, *debug);
                 logic::log_stats(
                     success,
                     failures,

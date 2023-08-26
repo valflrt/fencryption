@@ -2,8 +2,8 @@
 
 use std::io::{self, Read, Write};
 
-/// Default buffer length for io (4kb).
-pub const DEFAULT_BUF_LEN: usize = 4000;
+/// Default buffer length for io (128kb).
+pub const DEFAULT_BUF_LEN: usize = 128000;
 
 /// Transfer data from a reader to a writer.
 pub fn stream(from: &mut impl Read, to: &mut impl Write) -> io::Result<()> {
@@ -75,16 +75,13 @@ impl<R1: Read, R2: Read> Read for Chain<R1, R2> {
     /// ```
     fn read(&mut self, out_buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.first {
-            Some(first) => {
-                let buf_len = out_buf.len();
-                match first.read(out_buf)? {
-                    n if n < buf_len => {
-                        self.first = None;
-                        Ok(n + self.second.read(&mut out_buf[n..])?)
-                    }
-                    n => Ok(n),
+            Some(first) => match first.read(out_buf)? {
+                n if n < out_buf.len() => {
+                    self.first = None;
+                    Ok(n + self.second.read(&mut out_buf[n..])?)
                 }
-            }
+                n => Ok(n),
+            },
             None => Ok(self.second.read(out_buf)?),
         }
     }

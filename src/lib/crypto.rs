@@ -5,14 +5,20 @@ use rand::{rngs::OsRng, RngCore};
 use sha2::{Digest, Sha256};
 use std::io::{self, Read, Write};
 
+use crate::io::DEFAULT_BUF_LEN;
+
 /// Default initialization vector length (12b).
 pub const IV_LEN: usize = 96 / 8;
 /// Default authentication tag length (16b).
 pub const TAG_LEN: usize = 128 / 8;
-/// Encryption chunk length: plaintext (128kb).
-pub const ENC_CHUNK_LEN: usize = 128000;
-/// Decryption chunk length: iv (12b) + ciphertext (128kb) + auth tag (16b).
-pub const DEC_CHUNK_LEN: usize = IV_LEN + ENC_CHUNK_LEN + TAG_LEN;
+/// Encrypted assets length: iv (12b) + auth tag (16b).
+pub const ENC_ASSETS_LEN: usize = IV_LEN + TAG_LEN;
+
+/// Plain chunk length: plaintext (128kb).
+pub const PLAIN_CHUNK_LEN: usize = DEFAULT_BUF_LEN;
+
+/// Encrypted chunk length: iv (12b) + ciphertext (128kb) + auth tag (16b).
+pub const ENC_CHUNK_LEN: usize = PLAIN_CHUNK_LEN + ENC_ASSETS_LEN;
 
 /// Enum of the different possible crypto errors.
 #[derive(Debug)]
@@ -41,17 +47,17 @@ impl Crypto {
     }
 
     /// Encrypt bytes with initialisation vector.
-    pub fn encrypt_with_iv(&self, plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn encrypt_with_iv(&self, buf: &[u8], iv: &[u8]) -> io::Result<Vec<u8>> {
         self.cipher
-            .encrypt(Nonce::from_slice(iv), plaintext)
-            .map_err(ErrorKind::AesError)
+            .encrypt(Nonce::from_slice(iv), buf)
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "failed to encrypt"))
     }
 
     /// Decrypt bytes with initialisation vector.
-    pub fn decrypt_with_iv(&self, ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorKind> {
+    pub fn decrypt_with_iv(&self, ciphertext: &[u8], iv: &[u8]) -> io::Result<Vec<u8>> {
         self.cipher
             .decrypt(Nonce::from_slice(iv), ciphertext)
-            .map_err(ErrorKind::AesError)
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "failed to decrypt"))
     }
 
     /// Encrypt a small piece of data.
@@ -70,10 +76,7 @@ impl Crypto {
     ///
     /// assert_ne!(my_super_secret_message, enc);
     /// ```
-    pub fn encrypt<P>(&self, plain: P) -> Result<Vec<u8>, ErrorKind>
-    where
-        P: AsRef<[u8]>,
-    {
+    pub fn encrypt(&self, plain: impl AsRef<[u8]>) -> io::Result<Vec<u8>> {
         let iv = random_iv();
         Ok([&iv, self.encrypt_with_iv(plain.as_ref(), &iv)?.as_slice()].concat())
     }
@@ -95,10 +98,7 @@ impl Crypto {
     ///
     /// assert_eq!(my_super_secret_message, dec);
     /// ```
-    pub fn decrypt<E>(&self, enc: E) -> Result<Vec<u8>, ErrorKind>
-    where
-        E: AsRef<[u8]>,
-    {
+    pub fn decrypt(&self, enc: impl AsRef<[u8]>) -> io::Result<Vec<u8>> {
         let (iv, ciphertext) = enc.as_ref().split_at(IV_LEN);
         self.decrypt_with_iv(ciphertext, iv)
     }
@@ -130,19 +130,14 @@ impl Crypto {
     ///     )
     ///     .unwrap();
     /// ```
-    pub fn encrypt_io(
-        &self,
-        source: &mut impl Read,
-        dest: &mut impl Write,
-    ) -> Result<(), ErrorKind> {
-        let mut buffer = [0u8; ENC_CHUNK_LEN];
+    pub fn encrypt_io(&self, source: &mut impl Read, dest: &mut impl Write) -> io::Result<()> {
+        let mut buffer = [0u8; PLAIN_CHUNK_LEN];
 
         loop {
-            let read_len = source.read(&mut buffer).map_err(ErrorKind::Io)?;
-            dest.write_all(&self.encrypt(&buffer[..read_len])?)
-                .map_err(ErrorKind::Io)?;
+            let read_len = source.read(&mut buffer)?;
+            dest.write_all(&self.encrypt(&buffer[..read_len])?)?;
             // Stops when the loop reached the end of the file
-            if read_len != ENC_CHUNK_LEN {
+            if read_len != PLAIN_CHUNK_LEN {
                 break;
             }
         }
@@ -185,19 +180,14 @@ impl Crypto {
     ///
     /// assert_eq!(tmp_dir.read_file("dec").unwrap(), my_super_secret_message[..]);
     /// ```
-    pub fn decrypt_io(
-        &self,
-        source: &mut impl Read,
-        dest: &mut impl Write,
-    ) -> Result<(), ErrorKind> {
-        let mut buffer = [0u8; DEC_CHUNK_LEN];
+    pub fn decrypt_io(&self, source: &mut impl Read, dest: &mut impl Write) -> io::Result<()> {
+        let mut buffer = [0u8; ENC_CHUNK_LEN];
 
         loop {
-            let read_len = source.read(&mut buffer).map_err(ErrorKind::Io)?;
-            dest.write_all(&self.decrypt(&buffer[..read_len])?)
-                .map_err(ErrorKind::Io)?;
+            let read_len = source.read(&mut buffer)?;
+            dest.write_all(&self.decrypt(&buffer[..read_len])?)?;
             // Stops when the loop reached the end of the file.
-            if read_len != DEC_CHUNK_LEN {
+            if read_len != ENC_CHUNK_LEN {
                 break;
             }
         }
@@ -206,11 +196,133 @@ impl Crypto {
     }
 }
 
+pub struct EncryptCipher<R: Read> {
+    source: R,
+    crypto: Crypto,
+    buf: [u8; ENC_CHUNK_LEN],
+    start: usize,
+    end: usize,
+}
+
+impl<R: Read> EncryptCipher<R> {
+    pub fn new<K>(key: K, source: R) -> Self
+    where
+        K: AsRef<[u8]>,
+    {
+        EncryptCipher {
+            source,
+            crypto: Crypto::new(key),
+            buf: [0u8; ENC_CHUNK_LEN],
+            start: ENC_CHUNK_LEN,
+            end: ENC_CHUNK_LEN,
+        }
+    }
+}
+
+impl<R: Read> Read for EncryptCipher<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut total = 0;
+        let buf_len = buf.len();
+
+        loop {
+            if self.start >= self.end {
+                let read_len = self.source.read(&mut self.buf[..PLAIN_CHUNK_LEN])?;
+                if read_len == 0 {
+                    break;
+                }
+
+                let enc = self.crypto.encrypt(&self.buf[..read_len])?;
+
+                self.start = 0;
+                self.end = enc.len();
+
+                self.buf.as_mut().write(&enc)?;
+            }
+
+            if self.start + buf_len < self.end {
+                buf.copy_from_slice(&self.buf[self.start..self.start + buf_len]);
+                total += buf_len;
+                self.start += buf_len;
+                break;
+            } else {
+                let remaining_len = self.end - self.start;
+                buf[..remaining_len]
+                    .copy_from_slice(&self.buf[self.start..self.start + remaining_len]);
+                total += remaining_len;
+                self.start = self.end;
+            }
+        }
+
+        Ok(total)
+    }
+}
+
+pub struct DecryptCipher<R: Read> {
+    source: R,
+    crypto: Crypto,
+    buf: [u8; ENC_CHUNK_LEN],
+    start: usize,
+    end: usize,
+}
+
+impl<R: Read> DecryptCipher<R> {
+    pub fn new<K>(key: K, source: R) -> Self
+    where
+        K: AsRef<[u8]>,
+    {
+        DecryptCipher {
+            source,
+            crypto: Crypto::new(key),
+            buf: [0u8; ENC_CHUNK_LEN],
+            start: ENC_CHUNK_LEN,
+            end: ENC_CHUNK_LEN,
+        }
+    }
+}
+
+impl<R: Read> Read for DecryptCipher<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut total = 0;
+        let buf_len = buf.len();
+
+        loop {
+            if self.start >= self.end {
+                let read_len = self.source.read(&mut self.buf[..ENC_CHUNK_LEN])?;
+                if read_len == 0 {
+                    break;
+                }
+
+                let dec = self.crypto.decrypt(&self.buf[..read_len])?;
+
+                self.start = 0;
+                self.end = dec.len();
+
+                self.buf.as_mut().write(&dec)?;
+            }
+
+            if self.start + buf_len < self.end {
+                buf.copy_from_slice(&self.buf[self.start..self.start + buf_len]);
+                total += buf_len;
+                self.start += buf_len;
+                break;
+            } else {
+                let remaining_len = self.end - self.start;
+                buf[..remaining_len]
+                    .copy_from_slice(&self.buf[self.start..self.start + remaining_len]);
+                total += remaining_len;
+                self.start = self.end;
+            }
+        }
+
+        Ok(total)
+    }
+}
+
 fn hash_key<K>(key: K) -> Vec<u8>
 where
     K: AsRef<[u8]>,
 {
-    let mut hasher = Sha256::new();
+    let mut hasher = <Sha256 as Digest>::new();
     hasher.update(key.as_ref());
     hasher.finalize().to_vec()
 }
