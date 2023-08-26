@@ -79,7 +79,7 @@ pub enum DecryptCommands {
 
         /// Delete encrypted files after decrypting
         #[clap(short = 'd', long)]
-        delete_encrypted: bool,
+        delete_original: bool,
 
         #[clap(from_global)]
         debug: bool,

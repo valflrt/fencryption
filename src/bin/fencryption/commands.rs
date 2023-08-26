@@ -80,7 +80,6 @@ pub fn encrypt_file(
 
                 for dir_entry in walk_dir {
                     let entry = dir_entry.map_err(ErrorKind::ReadDirEntry)?;
-
                     let input_path = entry.path();
                     let relative_entry_path = input_path
                         .strip_prefix(&dir_path)
